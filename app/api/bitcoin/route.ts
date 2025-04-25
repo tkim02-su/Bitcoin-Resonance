@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 // app/api/bitcoin/route.ts
 export async function GET() {
   try {
@@ -10,7 +12,7 @@ export async function GET() {
     const change = json.market_data.price_change_percentage_24h;
 
     return Response.json({ price, volume, change });
-  } catch (e) {
+  } catch {
     return new Response('Fetch error', { status: 500 });
   }
 }

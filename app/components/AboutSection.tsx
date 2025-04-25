@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unescaped-entities */
+
 // app/components/AboutSection.tsx
 'use client';
 
