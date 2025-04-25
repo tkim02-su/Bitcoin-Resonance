@@ -33,7 +33,7 @@ export default function Home() {
     };
 
     load(); // 최초 호출
-    const interval = setInterval(load, 3000); // 3초마다 polling
+    const interval = setInterval(load, 10000); // 3초마다 polling
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -46,7 +46,7 @@ export default function Home() {
 
       {btcData ? (
         <>
-          <h1 className="text-4xl font-bold mb-6 z-10">Bitcoin Resonance</h1>
+          <h1 className="text-4xl font-bold mt-16 mb-6 z-10">Bitcoin Resonance</h1>
 
           <MarketStats
             price={btcData.price}
