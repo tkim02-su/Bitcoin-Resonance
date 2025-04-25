@@ -5,8 +5,11 @@ import BreathingPanel from './components/BreathingPanel';
 import MarketStats from './components/MarketStats';
 import dynamic from 'next/dynamic';
 import AboutSection from './components/AboutSection';
-import TransactionFeed from './components/TransactionFeed';
 import { fetchBitcoinData } from '../lib/fetchBitcoin'; 
+import FearGreedMeter from './components/FearGreedMeter';
+import LiveSentimentMeter from './components/LiveSentimentMeter';
+
+
 
 const BitcoinUniverse3D = dynamic(() => import('./components/BitcoinUniverse3D'), { ssr: false });
 
@@ -75,8 +78,9 @@ export default function Home() {
             <AboutSection />
           </div>
 
-          <div className="mt-20">
-            <TransactionFeed />
+          <div className="flex flex-col items-center justify-center space-y-10 mt-20">
+            <FearGreedMeter />
+            <LiveSentimentMeter />
           </div>
         </>
       ) : (

@@ -23,7 +23,7 @@ export default function useBitcoinFetcher() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 15000); // 10초 간격
+    const interval = setInterval(fetchData, 10000); // 10초 간격
     return () => clearInterval(interval);
   }, []);
 

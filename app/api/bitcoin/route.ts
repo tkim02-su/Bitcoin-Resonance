@@ -1,16 +1,27 @@
 // app/api/bitcoin/route.ts
+import { NextResponse } from 'next/server';
+
 export async function GET() {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin?localization=false');
-    if (!res.ok) return new Response('Failed to fetch BTC data', { status: 500 });
+    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
-    const json = await res.json();
-    const price = json.market_data.current_price.usd;
-    const volume = json.market_data.total_volume.usd;
-    const change = json.market_data.price_change_percentage_24h;
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Binance data: ${res.status}`);
+    }
 
-    return Response.json({ price, volume, change });
-  } catch {
-    return new Response('Fetch error', { status: 500 });
+    const data = await res.json();
+
+    const price = parseFloat(data.lastPrice);
+    const volume = parseFloat(data.quoteVolume); // USD volume
+    const change = parseFloat(data.priceChangePercent);
+
+    return NextResponse.json({ price, volume, change });
+  } catch (error) {
+    console.error('Proxy API Error:', error);
+    return NextResponse.json({ error: 'Failed to fetch Binance data' }, { status: 500 });
   }
 }
