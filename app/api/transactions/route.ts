@@ -1,5 +1,11 @@
-// app/api/transactions/route.ts
 import { NextResponse } from 'next/server';
+
+interface BinanceTrade {
+  price: string;
+  qty: string;
+  isBuyerMaker: boolean;
+  time: number;
+}
 
 export async function GET() {
   try {
@@ -13,9 +19,9 @@ export async function GET() {
       throw new Error(`Failed to fetch Binance trades: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data: BinanceTrade[] = await res.json(); // <-- typed data too
 
-    const mapped = data.map((trade: any) => ({
+    const mapped = data.map((trade: BinanceTrade) => ({
       price: parseFloat(trade.price),
       quantity: parseFloat(trade.qty),
       side: trade.isBuyerMaker ? 'sell' : 'buy',
