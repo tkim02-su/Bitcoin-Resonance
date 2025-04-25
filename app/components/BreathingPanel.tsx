@@ -1,8 +1,8 @@
-// app/components/BreathingPanel.tsx
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
+import Image from 'next/image'; // <-- added
 
 interface BreathingPanelProps {
   volume: number;
@@ -66,14 +66,16 @@ export default function BreathingPanel({ volume }: BreathingPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [volume]);
+  }, [volume, controls]); // <-- added controls
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[600px]">
       <motion.div animate={controls} className="w-[220px] h-[220px] z-0 mb-20">
-        <img
+        <Image
           src="/heart.svg"
           alt="Beating Heart"
+          width={220}
+          height={220}
           className="object-contain w-full h-full"
         />
       </motion.div>

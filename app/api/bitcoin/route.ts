@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 // app/api/bitcoin/route.ts
 export async function GET() {
   try {

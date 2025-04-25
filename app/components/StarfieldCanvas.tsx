@@ -54,27 +54,27 @@ export default function StarfieldCanvas({ volume }: StarfieldCanvasProps) {
     starsRef.current = stars;
 
     const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-      for (let star of starsRef.current) {
-        star.x += star.vx;
-        star.y += star.vy;
-
-        if (star.x < 0) star.x = width;
-        if (star.x > width) star.x = 0;
-        if (star.y < 0) star.y = height;
-        if (star.y > height) star.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-        ctx.shadowBlur = 4;
-        ctx.shadowColor = star.color;
-        ctx.fillStyle = star.color;
-        ctx.globalAlpha = star.alpha;
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-      }
-      requestAnimationFrame(animate);
-    };
+        ctx.clearRect(0, 0, width, height);
+        for (const star of starsRef.current) { // <-- changed let → const
+          star.x += star.vx;
+          star.y += star.vy;
+      
+          if (star.x < 0) star.x = width;
+          if (star.x > width) star.x = 0;
+          if (star.y < 0) star.y = height;
+          if (star.y > height) star.y = 0;
+      
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = star.color;
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = star.alpha;
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        }
+        requestAnimationFrame(animate);
+      };
 
     animate();
 
