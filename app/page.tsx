@@ -33,7 +33,7 @@ export default function Home() {
     };
 
     load(); // 최초 호출
-    const interval = setInterval(load, 10000); // 3초마다 polling
+    const interval = setInterval(load, 15000); // 15초마다 polling
     return () => {
       isMounted = false;
       clearInterval(interval);
