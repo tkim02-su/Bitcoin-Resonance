@@ -1,4 +1,3 @@
-// app/components/TransactionCard.tsx
 'use client';
 
 import React from 'react';
@@ -14,10 +13,14 @@ interface TransactionCardProps {
 export default function TransactionCard({ price, quantity, side, time }: TransactionCardProps) {
   return (
     <div
-      className={`flex justify-between items-center px-4 py-2 rounded-md shadow-md transition duration-300 text-sm ${
-        side === 'buy' ? 'bg-green-800/20 text-green-300' : 'bg-red-800/20 text-red-300'
-      }`}
+      className={`flex justify-between items-center px-4 py-2 rounded-md shadow-md transition duration-300 
+        border border-opacity-20 backdrop-blur-sm ${
+          side === 'buy'
+            ? 'bg-green-700/20 text-green-300 border-green-500/30 hover:bg-green-700/30'
+            : 'bg-red-700/20 text-red-300 border-red-500/30 hover:bg-red-700/30'
+        }`}
     >
+      {/* Left: Type and Price */}
       <div className="flex items-center space-x-2">
         {side === 'buy' ? (
           <ArrowTrendingUpIcon className="h-5 w-5 text-green-300" />
@@ -25,16 +28,18 @@ export default function TransactionCard({ price, quantity, side, time }: Transac
           <ArrowTrendingDownIcon className="h-5 w-5 text-red-300" />
         )}
         <span className="font-semibold">
-          {side === 'buy' ? 'Buy' : 'Sell'} @ ${price.toLocaleString(undefined, {
+          {side === 'buy' ? 'Buy' : 'Sell'} @ $
+          {price.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
         </span>
       </div>
 
+      {/* Right: Quantity and Time */}
       <div className="text-right">
-        <p>{quantity.toFixed(4)} BTC</p>
-        <p className="text-xs text-gray-400">{time}</p>
+        <p className="font-medium">{quantity.toFixed(4)} BTC</p>
+        <p className="text-xs text-white/60">{time}</p>
       </div>
     </div>
   );

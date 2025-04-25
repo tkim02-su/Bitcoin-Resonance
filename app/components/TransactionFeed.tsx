@@ -36,17 +36,17 @@ export default function TransactionFeed() {
   }, []);
 
   return (
-    <div className="w-full max-w-md px-4 py-6 space-y-3 z-10">
-      <h2 className="text-xl font-semibold text-center mb-4">Live BTC Transactions</h2>
+    <div className="w-full max-w-md px-4 py-6 space-y-3 z-10 bg-black/70 border border-gray-700 rounded-lg shadow-lg mx-auto mt-10">
+      <h2 className="text-xl font-semibold text-center mb-4 text-white">Live BTC Transactions</h2>
       {transactions.map((tx, index) => (
         <TransactionCard
-            key={index}
-            price={tx.price}
-            quantity={tx.qty}
-            side={tx.side as 'buy' | 'sell'}
-            time={new Date(tx.time).toLocaleTimeString()}
+          key={index}
+          price={tx.price}
+          quantity={tx.qty}
+          side={tx.side as 'buy' | 'sell'}
+          time={new Date(tx.time).toLocaleTimeString()}
         />
-        ))}
+      ))}
     </div>
   );
 }
