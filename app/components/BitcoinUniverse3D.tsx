@@ -4,9 +4,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import EnhancedStars from './EnhancedStars';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
-import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'; // ✅ Needed correctly
 import Planet from './Planet';
-import * as THREE from 'three';
 import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
 import PlanetStoryCard from './PlanetStoryCard';
 
@@ -24,11 +23,11 @@ interface AltcoinInfo {
 export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
-  const [selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
-  const [selectedPlanetFolder, setSelectedPlanetFolder] = useState<string>('');
-  const orbitControlsRef = useRef<OrbitControlsImpl>(null);
-  const [isReturning, setIsReturning] = useState(false);
-  const [cameraZ, setCameraZ] = useState(5); // 🚀 초기 카메라 위치
+  const [_selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
+  const [_selectedPlanetFolder, setSelectedPlanetFolder] = useState<string>('');
+  const orbitControlsRef = useRef<OrbitControlsImpl>(null); // ✅ Proper type
+  const [_isReturning, setIsReturning] = useState(false);
+  const [cameraZ, setCameraZ] = useState(5);
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -49,12 +48,10 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
 
   useEffect(() => {
     if (exploreMode) {
-      // Explore 모드 들어가면 카메라 천천히 zoom out
-      setCameraZ(20); 
+      setCameraZ(20);
     } else {
-      // Web 모드 복귀하면 카메라 원위치
       setCameraZ(5);
-      setSelectedAltcoin(null); // ✅ StoryCard도 제거
+      setSelectedAltcoin(null);
     }
   }, [exploreMode]);
 
@@ -86,17 +83,17 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
           {exploreMode && (
             <>
               <DreiOrbitControls
-                ref={orbitControlsRef as any}
-                enableZoom={true}
-                enableRotate={true}
-                enablePan={true}
+                ref={orbitControlsRef}
+                enableZoom
+                enableRotate
+                enablePan
                 zoomSpeed={0.5}
                 rotateSpeed={0.4}
                 panSpeed={0.4}
                 minDistance={2}
                 maxDistance={50}
                 dampingFactor={0.1}
-                enableDamping={true}
+                enableDamping
               />
               {Array.from({ length: 30 }).map((_, index) => {
                 const randomAltcoin = altcoins[index % altcoins.length];
@@ -119,12 +116,10 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
             </>
           )}
 
-          {/* 카메라 움직임 부드럽게 */}
           <CameraAnimator targetZ={cameraZ} />
         </Suspense>
       </Canvas>
 
-      {/* PlanetStoryCard는 Explore Mode에서만 보여야 함 */}
       {exploreMode && selectedAltcoin && (
         <PlanetStoryCard
           name={selectedAltcoin.name}
@@ -148,11 +143,10 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
   );
 }
 
-// 🎥 부드러운 카메라 애니메이터 컴포넌트
 function CameraAnimator({ targetZ }: { targetZ: number }) {
   const { camera } = useThree();
   useFrame(() => {
-    camera.position.z += (targetZ - camera.position.z) * 0.05; // 부드럽게 이동
+    camera.position.z += (targetZ - camera.position.z) * 0.05;
   });
   return null;
 }
