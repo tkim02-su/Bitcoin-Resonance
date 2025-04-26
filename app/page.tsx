@@ -43,7 +43,7 @@ export default function Home() {
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
-      <BitcoinUniverse3D exploreMode={isExploreMode} />
+      <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} />
 
       {!btcData ? (
         <LoadingHeartbeat />
