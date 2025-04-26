@@ -1,12 +1,11 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { OrbitControls } from '@react-three/drei';
-import { OrbitControls as ThreeOrbitControls } from 'three-stdlib'; // ✅ 타입용 import
 import EnhancedStars from './EnhancedStars';
+import { OrbitControls } from '@react-three/drei';
 import Planet from './Planet';
-import Image from 'next/image';
+import * as THREE from 'three';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -16,14 +15,13 @@ interface AltcoinInfo {
   id: string;
   symbol: string;
   name: string;
-  image: string;
-  description: string;
 }
 
 export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
-  const controlsRef = useRef<ThreeOrbitControls>(null); // ✅ 타입 정확히 수정
+  const [selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
+  const orbitControlsRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -31,12 +29,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
         const res = await fetch('/api/altcoins');
         const data = await res.json();
         if (Array.isArray(data)) {
-          const mockData = data.slice(0, 6).map((coin, idx) => ({
-            ...coin,
-            image: `/planet${(idx % 6) + 1}.jpg`, // Public 폴더에 planet1~6.jpg 준비
-            description: `A fascinating planet called ${coin.name}, full of mysteries and wonders.`,
-          }));
-          setAltcoins(mockData);
+          setAltcoins(data.slice(0, 100)); // 100개만 사용
         } else {
           console.error('Unexpected altcoins API response:', data);
         }
@@ -48,18 +41,14 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
     fetchAltcoins();
   }, []);
 
-  const handlePlanetClick = (planetPosition: [number, number, number], altcoin: AltcoinInfo) => {
-    if (controlsRef.current) {
-      controlsRef.current.target.set(...planetPosition);
-    }
+  const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number]) => {
     setSelectedAltcoin(altcoin);
+    setSelectedPlanetPosition(position);
   };
 
-  const handleClose = () => {
-    if (controlsRef.current) {
-      controlsRef.current.target.set(0, 0, 0);
-    }
+  const handleCloseInfo = () => {
     setSelectedAltcoin(null);
+    setSelectedPlanetPosition(null);
   };
 
   return (
@@ -73,74 +62,62 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           {exploreMode && (
             <>
               <OrbitControls
-                ref={controlsRef}
-                enableZoom
+                ref={orbitControlsRef as any}
+                enableZoom={true}
                 zoomSpeed={0.5}
                 rotateSpeed={0.4}
                 panSpeed={0.4}
                 minDistance={2}
                 maxDistance={50}
                 dampingFactor={0.1}
-                enableDamping
+                enableDamping={true}
               />
               {Array.from({ length: 30 }).map((_, index) => {
-                const altcoin = altcoins[index % altcoins.length];
+                const randomAltcoin = altcoins[index % altcoins.length];
+                const randomPosition: [number, number, number] = [
+                  (Math.random() - 0.5) * 100,
+                  (Math.random() - 0.5) * 100,
+                  (Math.random() - 0.5) * 100,
+                ];
                 return (
                   <Planet
                     key={index}
-                    position={[
-                      (Math.random() - 0.5) * 100,
-                      (Math.random() - 0.5) * 100,
-                      (Math.random() - 0.5) * 100,
-                    ]}
+                    position={randomPosition}
                     size={Math.random() * 1.5 + 0.5}
-                    textureUrl={altcoin?.image || '/planet1.jpg'}
-                    onClick={(planetPosition) => handlePlanetClick(planetPosition, altcoin)}
+                    textureUrl={`/planet${(index % 6) + 1}.jpg`}
+                    onClick={() => handlePlanetClick(randomAltcoin, randomPosition)}
                   />
                 );
               })}
             </>
           )}
         </Suspense>
+
+        {/* 카메라 부드럽게 이동 */}
+        {selectedPlanetPosition && (
+          <CameraMover targetPosition={selectedPlanetPosition} />
+        )}
       </Canvas>
 
+      {/* 팝업 UI */}
       {selectedAltcoin && (
-        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 p-8 rounded-lg shadow-lg border border-white max-w-md text-center z-20 animate-fadeIn">
-          {/* ⭐ 코인 이미지 */}
-          <Image
-            src={selectedAltcoin.image}
-            alt={selectedAltcoin.name}
-            width={96}
-            height={96}
-            className="rounded-full mb-4 shadow-lg object-cover mx-auto"
-            unoptimized // ✅ public 폴더 이미지라 unoptimized 추가
-          />
-
-          {/* 코인 이름 */}
-          <h2 className="text-3xl font-bold mb-2">{selectedAltcoin.name}</h2>
-
-          {/* 심볼 */}
-          <p className="text-gray-300 text-sm mb-4">Symbol: {selectedAltcoin.symbol.toUpperCase()}</p>
-
-          {/* 설명 */}
-          <p className="text-gray-400 mb-6">
-            {selectedAltcoin.description}
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 p-8 rounded-lg shadow-lg border border-white max-w-md text-center z-20">
+          <h2 className="text-3xl font-bold mb-4">{selectedAltcoin.name}</h2>
+          <p className="text-sm text-gray-400 mb-2">Symbol: {selectedAltcoin.symbol.toUpperCase()}</p>
+          <p className="text-gray-300 mb-6">
+            Discover the mysteries of {selectedAltcoin.name}. This planet holds secrets beyond imagination.
           </p>
-
-          {/* Learn More 버튼 */}
           <a
             href={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block mt-2 px-6 py-3 bg-white text-black rounded-full hover:bg-gray-300 transition font-semibold"
+            className="inline-block mt-4 px-6 py-2 bg-white text-black rounded-full hover:bg-gray-300 transition font-semibold"
           >
             Learn More
           </a>
-
-          {/* Close 버튼 */}
           <button
-            className="block mt-4 px-6 py-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition mx-auto font-semibold"
-            onClick={handleClose}
+            onClick={handleCloseInfo}
+            className="block mt-4 px-6 py-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition mx-auto font-semibold"
           >
             Close
           </button>
@@ -148,4 +125,16 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
       )}
     </div>
   );
+}
+
+// 부드럽게 카메라 이동 컴포넌트
+function CameraMover({ targetPosition }: { targetPosition: [number, number, number] }) {
+  const targetVec = new THREE.Vector3(...targetPosition);
+
+  useFrame(({ camera }) => {
+    camera.position.lerp(targetVec.clone().add(new THREE.Vector3(0, 0, 5)), 0.05);
+    camera.lookAt(targetVec);
+  });
+
+  return null;
 }
