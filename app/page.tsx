@@ -9,7 +9,9 @@ import { fetchBitcoinData } from '../lib/fetchBitcoin';
 import FearGreedMeter from './components/FearGreedMeter';
 import LiveSentimentMeter from './components/LiveSentimentMeter';
 import LoadingHeartbeat from './components/LoadingHeartbeat';
+import BigBangIntro from './components/BigBangIntro';
 
+// ⭐ BitcoinUniverse3D를 dynamic import + function wrapper
 const BitcoinUniverse3D = dynamic(() => import('./components/BitcoinUniverse3D'), { ssr: false });
 
 export default function Home() {
@@ -19,7 +21,8 @@ export default function Home() {
     change: number;
   } | null>(null);
 
-  const [isExploreMode, setIsExploreMode] = useState(false); // ⭐ Explore Mode 추가
+  const [isExploreMode, setIsExploreMode] = useState(false); // Explore Mode
+  const [isIntroFinished, setIsIntroFinished] = useState(false); // Intro 끝났는지
 
   useEffect(() => {
     let isMounted = true;
@@ -34,13 +37,23 @@ export default function Home() {
     };
 
     load();
-    const interval = setInterval(load, 15000); // 15초마다 polling
+    const interval = setInterval(load, 15000);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, []);
 
+  if (!isIntroFinished) {
+    // ⭐ Intro 진행 중이면, 무조건 BigBangIntro만
+    return (
+      <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
+        <BigBangIntro onComplete={() => setIsIntroFinished(true)} />
+      </main>
+    );
+  }
+
+  // ⭐ Intro 끝난 이후
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
       <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} />
@@ -63,23 +76,16 @@ export default function Home() {
 
               <div className="mt-4 text-center text-lg space-y-1 z-10">
                 <p>
-                  Price: ${btcData.price.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Price: ${btcData.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p>
-                  Volume: ${btcData.volume.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Volume: ${btcData.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className={btcData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
                   Change: {btcData.change.toFixed(2)}%
                 </p>
               </div>
 
-              {/* 🔥 Explore Mode Button */}
               <button
                 onClick={() => setIsExploreMode(true)}
                 className="mt-10 px-6 py-3 bg-white text-black rounded-full hover:bg-gray-200 transition z-10 shadow"
@@ -98,7 +104,6 @@ export default function Home() {
             </>
           )}
 
-          {/* 🔥 Web Mode 복귀 버튼 (Explore Mode 시에만 보임) */}
           {isExploreMode && (
             <button
               onClick={() => setIsExploreMode(false)}
