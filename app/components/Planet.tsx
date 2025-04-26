@@ -2,18 +2,19 @@
 
 import * as THREE from 'three';
 import { useRef } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber';
 
 interface PlanetProps {
   position: [number, number, number];
   size: number;
-  imagePath: string; // ⭐️ 새로 추가된 props
-  onClick?: () => void;
+  textureUrl: string;
+  onClick: (position: [number, number, number]) => void; // ✅ 타입 명확히
 }
 
-export default function Planet({ position, size, imagePath, onClick }: PlanetProps) {
+export default function Planet({ position, size, textureUrl, onClick }: PlanetProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const texture = useLoader(THREE.TextureLoader, imagePath); // ⭐️ 텍스처 불러오기
+  const texture = useLoader(THREE.TextureLoader, textureUrl);
 
   useFrame(() => {
     if (meshRef.current) {
@@ -21,10 +22,17 @@ export default function Planet({ position, size, imagePath, onClick }: PlanetPro
     }
   });
 
+  const handleClick = () => {
+    if (meshRef.current) {
+      const pos = meshRef.current.position;
+      onClick([pos.x, pos.y, pos.z]); // ✅ 클릭 시 현재 포지션 넘기기
+    }
+  };
+
   return (
-    <mesh position={position} ref={meshRef} onClick={onClick}>
+    <mesh ref={meshRef} position={position} onClick={handleClick}>
       <sphereGeometry args={[size, 32, 32]} />
-      <meshStandardMaterial map={texture} />
+      <meshStandardMaterial map={texture} emissive={'#ffffff'} emissiveIntensity={0.1} />
     </mesh>
   );
 }
