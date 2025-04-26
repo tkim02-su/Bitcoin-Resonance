@@ -16,7 +16,8 @@ export async function GET() {
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (_error) {
+  } catch (error) {
+    console.error('Failed to fetch altcoins:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
