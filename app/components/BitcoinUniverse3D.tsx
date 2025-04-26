@@ -2,10 +2,11 @@
 
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import EnhancedStars from './EnhancedStars';
 import { OrbitControls } from '@react-three/drei';
-import { OrbitControls as ThreeOrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // ✅ 추가!
+import { OrbitControls as ThreeOrbitControls } from 'three-stdlib'; // ✅ 타입용 import
+import EnhancedStars from './EnhancedStars';
 import Planet from './Planet';
+import Image from 'next/image';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -22,20 +23,17 @@ interface AltcoinInfo {
 export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const controlsRef = useRef<ThreeOrbitControls>(null); // ✅ 타입 제대로 수정
+  const controlsRef = useRef<ThreeOrbitControls>(null); // ✅ 타입 정확히 수정
 
   useEffect(() => {
     const fetchAltcoins = async () => {
-      setLoading(true);
       try {
         const res = await fetch('/api/altcoins');
         const data = await res.json();
         if (Array.isArray(data)) {
           const mockData = data.slice(0, 6).map((coin, idx) => ({
             ...coin,
-            image: `/planet${(idx % 6) + 1}.jpg`, // 너가 public 폴더에 넣은 이미지
+            image: `/planet${(idx % 6) + 1}.jpg`, // Public 폴더에 planet1~6.jpg 준비
             description: `A fascinating planet called ${coin.name}, full of mysteries and wonders.`,
           }));
           setAltcoins(mockData);
@@ -44,8 +42,6 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
         }
       } catch (err) {
         console.error('Failed to fetch altcoins:', err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -53,7 +49,6 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
   }, []);
 
   const handlePlanetClick = (planetPosition: [number, number, number], altcoin: AltcoinInfo) => {
-    // 카메라 이동
     if (controlsRef.current) {
       controlsRef.current.target.set(...planetPosition);
     }
@@ -62,7 +57,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
 
   const handleClose = () => {
     if (controlsRef.current) {
-      controlsRef.current.target.set(0, 0, 0); // 중앙으로 복귀
+      controlsRef.current.target.set(0, 0, 0);
     }
     setSelectedAltcoin(null);
   };
@@ -79,14 +74,14 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
             <>
               <OrbitControls
                 ref={controlsRef}
-                enableZoom={true}
+                enableZoom
                 zoomSpeed={0.5}
                 rotateSpeed={0.4}
                 panSpeed={0.4}
                 minDistance={2}
                 maxDistance={50}
                 dampingFactor={0.1}
-                enableDamping={true}
+                enableDamping
               />
               {Array.from({ length: 30 }).map((_, index) => {
                 const altcoin = altcoins[index % altcoins.length];
@@ -109,24 +104,30 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
         </Suspense>
       </Canvas>
 
-      {/* 인포 카드 */}
       {selectedAltcoin && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 p-8 rounded-lg shadow-lg border border-white max-w-md text-center z-20 animate-fadeIn">
-          {/* 코인 이미지 */}
-          <img
+          {/* ⭐ 코인 이미지 */}
+          <Image
             src={selectedAltcoin.image}
             alt={selectedAltcoin.name}
-            className="w-24 h-24 mx-auto rounded-full mb-4 shadow-lg object-cover"
+            width={96}
+            height={96}
+            className="rounded-full mb-4 shadow-lg object-cover mx-auto"
+            unoptimized // ✅ public 폴더 이미지라 unoptimized 추가
           />
+
           {/* 코인 이름 */}
           <h2 className="text-3xl font-bold mb-2">{selectedAltcoin.name}</h2>
+
           {/* 심볼 */}
           <p className="text-gray-300 text-sm mb-4">Symbol: {selectedAltcoin.symbol.toUpperCase()}</p>
+
           {/* 설명 */}
           <p className="text-gray-400 mb-6">
             {selectedAltcoin.description}
           </p>
-          {/* 버튼 */}
+
+          {/* Learn More 버튼 */}
           <a
             href={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
             target="_blank"
@@ -135,6 +136,8 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           >
             Learn More
           </a>
+
+          {/* Close 버튼 */}
           <button
             className="block mt-4 px-6 py-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition mx-auto font-semibold"
             onClick={handleClose}
