@@ -23,9 +23,12 @@ interface AltcoinInfo {
 export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_selectedPlanetFolder, setSelectedPlanetFolder] = useState<string>('');
   const orbitControlsRef = useRef<OrbitControlsImpl>(null); // ✅ Proper type
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isReturning, setIsReturning] = useState(false);
   const [cameraZ, setCameraZ] = useState(5);
 
