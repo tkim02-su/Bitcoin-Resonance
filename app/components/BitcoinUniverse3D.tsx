@@ -8,6 +8,7 @@ import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import Planet from './Planet';
 import * as THREE from 'three';
 import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
+import PlanetStoryCard from './PlanetStoryCard';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -24,11 +25,10 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
   const [selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
+  const [selectedPlanetFolder, setSelectedPlanetFolder] = useState<string>('');
   const orbitControlsRef = useRef<OrbitControlsImpl>(null);
-  const cameraMoveProgress = useRef(0);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
-  const [initialExplorationDone, setInitialExplorationDone] = useState(false);
+  const [cameraZ, setCameraZ] = useState(5); // 🚀 초기 카메라 위치
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -44,33 +44,35 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
         console.error('Failed to fetch altcoins:', err);
       }
     };
-
     fetchAltcoins();
   }, []);
 
   useEffect(() => {
     if (exploreMode) {
-      setIsAnimating(true);
-      setInitialExplorationDone(false);
+      // Explore 모드 들어가면 카메라 천천히 zoom out
+      setCameraZ(20); 
+    } else {
+      // Web 모드 복귀하면 카메라 원위치
+      setCameraZ(5);
+      setSelectedAltcoin(null); // ✅ StoryCard도 제거
     }
   }, [exploreMode]);
 
-  const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number]) => {
+  const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number], folder: string) => {
     setSelectedAltcoin(altcoin);
     setSelectedPlanetPosition(position);
-    cameraMoveProgress.current = 0;
+    setSelectedPlanetFolder(folder);
   };
 
   const handleCloseInfo = () => {
     setSelectedAltcoin(null);
     setSelectedPlanetPosition(null);
-    cameraMoveProgress.current = 0;
+    setSelectedPlanetFolder('');
   };
 
   const handleReturnToWebMode = () => {
     setIsReturning(true);
-    setSelectedAltcoin(null);
-    setSelectedPlanetPosition(null);
+    setExploreMode(false);
   };
 
   return (
@@ -84,15 +86,13 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
           {exploreMode && (
             <>
               <DreiOrbitControls
-                ref={orbitControlsRef}
-                enableZoom={!isAnimating && !isReturning}
-                enableRotate={!isAnimating && !isReturning}
-                enablePan={!isAnimating && !isReturning}
-                autoRotate={initialExplorationDone}
-                autoRotateSpeed={0.2}
-                zoomSpeed={0.3}
-                rotateSpeed={0.2}
-                panSpeed={0.3}
+                ref={orbitControlsRef as any}
+                enableZoom={true}
+                enableRotate={true}
+                enablePan={true}
+                zoomSpeed={0.5}
+                rotateSpeed={0.4}
+                panSpeed={0.4}
                 minDistance={2}
                 maxDistance={50}
                 dampingFactor={0.1}
@@ -105,62 +105,38 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
                   (Math.random() - 0.5) * 100,
                   (Math.random() - 0.5) * 100,
                 ];
+                const planetFolder = `planet${(index % 5) + 1}`;
                 return (
                   <Planet
                     key={index}
                     position={randomPosition}
                     size={Math.random() * 1.5 + 0.5}
-                    textureUrl={`/planet${(index % 8) + 1}.jpg`}
-                    onClick={() => handlePlanetClick(randomAltcoin, randomPosition)}
+                    planetFolder={planetFolder}
+                    onClick={() => handlePlanetClick(randomAltcoin, randomPosition, planetFolder)}
                   />
                 );
               })}
             </>
           )}
+
+          {/* 카메라 움직임 부드럽게 */}
+          <CameraAnimator targetZ={cameraZ} />
         </Suspense>
-
-        {selectedPlanetPosition && (
-          <CameraMover targetPosition={selectedPlanetPosition} progressRef={cameraMoveProgress} />
-        )}
-
-        {exploreMode && isAnimating && (
-          <ExploreIntroAnimation onFinish={() => {
-            setIsAnimating(false);
-            setInitialExplorationDone(true);
-          }} />
-        )}
-
-        {isReturning && <ReturnToWebAnimation onFinish={() => {
-          setIsReturning(false);
-          setExploreMode(false);
-        }} />}
       </Canvas>
 
-      {selectedAltcoin && (
-        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 p-8 rounded-lg shadow-lg border border-white max-w-md text-center z-20">
-          <h2 className="text-3xl font-bold mb-4">{selectedAltcoin.name}</h2>
-          <p className="text-sm text-gray-400 mb-2">Symbol: {selectedAltcoin.symbol.toUpperCase()}</p>
-          <p className="text-gray-300 mb-6">
-            {altcoinDescriptions[selectedAltcoin.id] || `Explore the wonders of ${selectedAltcoin.name}.`}
-          </p>
-          <a
-            href={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-4 px-6 py-2 bg-white text-black rounded-full hover:bg-gray-300 transition font-semibold"
-          >
-            Learn More
-          </a>
-          <button
-            onClick={handleCloseInfo}
-            className="block mt-4 px-6 py-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition mx-auto font-semibold"
-          >
-            Close
-          </button>
-        </div>
+      {/* PlanetStoryCard는 Explore Mode에서만 보여야 함 */}
+      {exploreMode && selectedAltcoin && (
+        <PlanetStoryCard
+          name={selectedAltcoin.name}
+          symbol={selectedAltcoin.symbol}
+          description={altcoinDescriptions[selectedAltcoin.id]?.description || `Explore the wonders of ${selectedAltcoin.name}`}
+          mission={`Discover the mission of ${selectedAltcoin.name}`}
+          link={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
+          onAbort={handleCloseInfo}
+        />
       )}
 
-      {exploreMode && !isReturning && (
+      {exploreMode && (
         <button
           onClick={handleReturnToWebMode}
           className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
@@ -172,57 +148,11 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
   );
 }
 
-function CameraMover({ targetPosition, progressRef }: { targetPosition: [number, number, number]; progressRef: React.MutableRefObject<number>; }) {
-  const targetVec = new THREE.Vector3(...targetPosition);
-
-  useFrame(({ camera }) => {
-    if (!targetPosition) return;
-
-    progressRef.current += 0.005;
-    if (progressRef.current > 1) progressRef.current = 1;
-
-    const midPoint = new THREE.Vector3(
-      (camera.position.x + targetVec.x) / 2,
-      (camera.position.y + targetVec.y) / 2 + 10,
-      (camera.position.z + targetVec.z) / 2
-    );
-
-    if (progressRef.current < 0.5) {
-      camera.position.lerp(midPoint, progressRef.current * 2);
-    } else {
-      camera.position.lerp(targetVec.clone().add(new THREE.Vector3(0, 0, 5)), (progressRef.current - 0.5) * 2);
-    }
-
-    camera.lookAt(targetVec);
-  });
-
-  return null;
-}
-
-function ExploreIntroAnimation({ onFinish }: { onFinish: () => void; }) {
+// 🎥 부드러운 카메라 애니메이터 컴포넌트
+function CameraAnimator({ targetZ }: { targetZ: number }) {
   const { camera } = useThree();
-  const progress = useRef(0);
-
   useFrame(() => {
-    progress.current += 0.004;
-    if (progress.current >= 1) {
-      onFinish();
-    } else {
-      const targetZ = 40;
-      camera.position.z = THREE.MathUtils.lerp(5, targetZ, progress.current);
-    }
-  });
-
-  return null;
-}
-
-function ReturnToWebAnimation({ onFinish }: { onFinish: () => void; }) {
-  useFrame(({ camera }) => {
-    const target = new THREE.Vector3(0, 0, 5);
-    camera.position.lerp(target, 0.02);
-    if (camera.position.distanceTo(target) < 0.1) {
-      onFinish();
-    }
+    camera.position.z += (targetZ - camera.position.z) * 0.05; // 부드럽게 이동
   });
   return null;
 }
