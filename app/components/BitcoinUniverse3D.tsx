@@ -1,15 +1,17 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import EnhancedStars from './EnhancedStars';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import Planet from './Planet';
 import * as THREE from 'three';
+import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
+  setExploreMode: (mode: boolean) => void;
 }
 
 interface AltcoinInfo {
@@ -18,11 +20,15 @@ interface AltcoinInfo {
   name: string;
 }
 
-export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProps) {
+export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
   const [selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
   const orbitControlsRef = useRef<OrbitControlsImpl>(null);
+  const cameraMoveProgress = useRef(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
+  const [initialExplorationDone, setInitialExplorationDone] = useState(false);
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -42,12 +48,27 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
     fetchAltcoins();
   }, []);
 
+  useEffect(() => {
+    if (exploreMode) {
+      setIsAnimating(true);
+      setInitialExplorationDone(false);
+    }
+  }, [exploreMode]);
+
   const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number]) => {
     setSelectedAltcoin(altcoin);
     setSelectedPlanetPosition(position);
+    cameraMoveProgress.current = 0;
   };
 
   const handleCloseInfo = () => {
+    setSelectedAltcoin(null);
+    setSelectedPlanetPosition(null);
+    cameraMoveProgress.current = 0;
+  };
+
+  const handleReturnToWebMode = () => {
+    setIsReturning(true);
     setSelectedAltcoin(null);
     setSelectedPlanetPosition(null);
   };
@@ -62,12 +83,16 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
 
           {exploreMode && (
             <>
-              <OrbitControls
+              <DreiOrbitControls
                 ref={orbitControlsRef}
-                enableZoom={true}
-                zoomSpeed={0.5}
-                rotateSpeed={0.4}
-                panSpeed={0.4}
+                enableZoom={!isAnimating && !isReturning}
+                enableRotate={!isAnimating && !isReturning}
+                enablePan={!isAnimating && !isReturning}
+                autoRotate={initialExplorationDone}
+                autoRotateSpeed={0.2}
+                zoomSpeed={0.3}
+                rotateSpeed={0.2}
+                panSpeed={0.3}
                 minDistance={2}
                 maxDistance={50}
                 dampingFactor={0.1}
@@ -85,7 +110,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
                     key={index}
                     position={randomPosition}
                     size={Math.random() * 1.5 + 0.5}
-                    textureUrl={`/planet${(index % 6) + 1}.jpg`}
+                    textureUrl={`/planet${(index % 8) + 1}.jpg`}
                     onClick={() => handlePlanetClick(randomAltcoin, randomPosition)}
                   />
                 );
@@ -95,8 +120,20 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
         </Suspense>
 
         {selectedPlanetPosition && (
-          <CameraMover targetPosition={selectedPlanetPosition} />
+          <CameraMover targetPosition={selectedPlanetPosition} progressRef={cameraMoveProgress} />
         )}
+
+        {exploreMode && isAnimating && (
+          <ExploreIntroAnimation onFinish={() => {
+            setIsAnimating(false);
+            setInitialExplorationDone(true);
+          }} />
+        )}
+
+        {isReturning && <ReturnToWebAnimation onFinish={() => {
+          setIsReturning(false);
+          setExploreMode(false);
+        }} />}
       </Canvas>
 
       {selectedAltcoin && (
@@ -104,7 +141,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           <h2 className="text-3xl font-bold mb-4">{selectedAltcoin.name}</h2>
           <p className="text-sm text-gray-400 mb-2">Symbol: {selectedAltcoin.symbol.toUpperCase()}</p>
           <p className="text-gray-300 mb-6">
-            Discover the mysteries of {selectedAltcoin.name}. This planet holds secrets beyond imagination.
+            {altcoinDescriptions[selectedAltcoin.id] || `Explore the wonders of ${selectedAltcoin.name}.`}
           </p>
           <a
             href={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
@@ -122,17 +159,70 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           </button>
         </div>
       )}
+
+      {exploreMode && !isReturning && (
+        <button
+          onClick={handleReturnToWebMode}
+          className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
+        >
+          🏠 Return to Web Mode
+        </button>
+      )}
     </div>
   );
 }
 
-function CameraMover({ targetPosition }: { targetPosition: [number, number, number] }) {
+function CameraMover({ targetPosition, progressRef }: { targetPosition: [number, number, number]; progressRef: React.MutableRefObject<number>; }) {
   const targetVec = new THREE.Vector3(...targetPosition);
 
   useFrame(({ camera }) => {
-    camera.position.lerp(targetVec.clone().add(new THREE.Vector3(0, 0, 5)), 0.05);
+    if (!targetPosition) return;
+
+    progressRef.current += 0.005;
+    if (progressRef.current > 1) progressRef.current = 1;
+
+    const midPoint = new THREE.Vector3(
+      (camera.position.x + targetVec.x) / 2,
+      (camera.position.y + targetVec.y) / 2 + 10,
+      (camera.position.z + targetVec.z) / 2
+    );
+
+    if (progressRef.current < 0.5) {
+      camera.position.lerp(midPoint, progressRef.current * 2);
+    } else {
+      camera.position.lerp(targetVec.clone().add(new THREE.Vector3(0, 0, 5)), (progressRef.current - 0.5) * 2);
+    }
+
     camera.lookAt(targetVec);
   });
 
+  return null;
+}
+
+function ExploreIntroAnimation({ onFinish }: { onFinish: () => void; }) {
+  const { camera } = useThree();
+  const progress = useRef(0);
+
+  useFrame(() => {
+    progress.current += 0.004;
+    if (progress.current >= 1) {
+      onFinish();
+    } else {
+      const targetZ = 40;
+      camera.position.z = THREE.MathUtils.lerp(5, targetZ, progress.current);
+    }
+  });
+
+  return null;
+}
+
+function ReturnToWebAnimation({ onFinish }: { onFinish: () => void; }) {
+  useFrame(({ camera }) => {
+    const target = new THREE.Vector3(0, 0, 5);
+    camera.position.lerp(target, 0.02);
+    if (camera.position.distanceTo(target) < 0.1) {
+      onFinish();
+    }
+  });
   return null;
 }
