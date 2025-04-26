@@ -23,7 +23,7 @@ export default function Planet({ position, size, textureUrl, onClick }: PlanetPr
       initialAngle: Math.random() * Math.PI * 2,
       speed: 0.1 + Math.random() * 0.05,
     };
-  }, []);
+  }, [position]);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();

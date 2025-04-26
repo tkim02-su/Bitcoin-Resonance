@@ -4,6 +4,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import EnhancedStars from './EnhancedStars';
 import { OrbitControls } from '@react-three/drei';
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import Planet from './Planet';
 import * as THREE from 'three';
 
@@ -21,7 +22,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
   const [selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
-  const orbitControlsRef = useRef<THREE.Group>(null);
+  const orbitControlsRef = useRef<OrbitControlsImpl>(null);
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -29,7 +30,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
         const res = await fetch('/api/altcoins');
         const data = await res.json();
         if (Array.isArray(data)) {
-          setAltcoins(data.slice(0, 100)); // 100개만 사용
+          setAltcoins(data.slice(0, 100));
         } else {
           console.error('Unexpected altcoins API response:', data);
         }
@@ -62,7 +63,7 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           {exploreMode && (
             <>
               <OrbitControls
-                ref={orbitControlsRef as any}
+                ref={orbitControlsRef}
                 enableZoom={true}
                 zoomSpeed={0.5}
                 rotateSpeed={0.4}
@@ -93,13 +94,11 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
           )}
         </Suspense>
 
-        {/* 카메라 부드럽게 이동 */}
         {selectedPlanetPosition && (
           <CameraMover targetPosition={selectedPlanetPosition} />
         )}
       </Canvas>
 
-      {/* 팝업 UI */}
       {selectedAltcoin && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 p-8 rounded-lg shadow-lg border border-white max-w-md text-center z-20">
           <h2 className="text-3xl font-bold mb-4">{selectedAltcoin.name}</h2>
@@ -127,7 +126,6 @@ export default function BitcoinUniverse3D({ exploreMode }: BitcoinUniverse3DProp
   );
 }
 
-// 부드럽게 카메라 이동 컴포넌트
 function CameraMover({ targetPosition }: { targetPosition: [number, number, number] }) {
   const targetVec = new THREE.Vector3(...targetPosition);
 
