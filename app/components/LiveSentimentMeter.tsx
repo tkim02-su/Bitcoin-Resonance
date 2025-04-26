@@ -5,23 +5,30 @@ import { useEffect, useState } from 'react';
 export default function LiveSentimentMeter() {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [previousPrice, setPreviousPrice] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const res = await fetch('/api/bitcoin'); // ✅ Coingecko 직접 호출 X
         const data = await res.json();
-        const price = data.bitcoin.usd;
 
-        setPreviousPrice(currentPrice);
-        setCurrentPrice(price);
+        if (data?.price) {
+          const price = data.price;
+          setPreviousPrice(currentPrice);
+          setCurrentPrice(price);
+        } else {
+          console.error('Invalid bitcoin price data:', data);
+        }
       } catch (err) {
         console.error('LiveSentiment fetch error:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
     load();
-    const interval = setInterval(load, 5000); // ✅ 3초 → 5초로 늘림
+    const interval = setInterval(load, 5000); // 5초마다 가격 polling
     return () => clearInterval(interval);
   }, [currentPrice]);
 
@@ -44,8 +51,18 @@ export default function LiveSentimentMeter() {
   return (
     <div className="w-full max-w-md px-6 py-8 bg-black bg-opacity-60 rounded-xl text-center text-white space-y-4">
       <h2 className="text-2xl font-semibold">⚡ Live Sentiment</h2>
-      <p className="text-5xl font-bold">{emoji}</p>
-      <p className="text-lg">{sentiment}</p>
+
+      {loading ? (
+        <p className="text-xl">Loading...</p> // ⭐️ 로딩 중 표시
+      ) : (
+        <>
+          <p className="text-5xl font-bold">{emoji}</p>
+          <p className="text-lg">{sentiment}</p>
+          <p className="text-sm text-gray-400">
+            {currentPrice !== null ? `$${currentPrice.toLocaleString()}` : ''}
+          </p>
+        </>
+      )}
     </div>
   );
 }

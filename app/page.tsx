@@ -1,29 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import BreathingPanel from './components/BreathingPanel';
 import MarketStats from './components/MarketStats';
+import dynamic from 'next/dynamic';
 import AboutSection from './components/AboutSection';
 import { fetchBitcoinData } from '../lib/fetchBitcoin';
 import FearGreedMeter from './components/FearGreedMeter';
 import LiveSentimentMeter from './components/LiveSentimentMeter';
 import LoadingHeartbeat from './components/LoadingHeartbeat';
-import BigBangIntro from './components/BigBangIntro'; // 추가
 
 const BitcoinUniverse3D = dynamic(() => import('./components/BitcoinUniverse3D'), { ssr: false });
 
 export default function Home() {
-  const [introComplete, setIntroComplete] = useState(false);
   const [btcData, setBtcData] = useState<{
     price: number;
     volume: number;
     change: number;
   } | null>(null);
 
-  useEffect(() => {
-    if (!introComplete) return; // Intro가 끝나야 polling 시작
+  const [isExploreMode, setIsExploreMode] = useState(false); // ⭐ Explore Mode 추가
 
+  useEffect(() => {
     let isMounted = true;
 
     const load = async () => {
@@ -41,66 +39,74 @@ export default function Home() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [introComplete]);
-
-  if (!introComplete) {
-    return (
-      <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-hidden">
-        <BigBangIntro onComplete={() => setIntroComplete(true)} />
-      </main>
-    );
-  }
+  }, []);
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
-      <BitcoinUniverse3D />
+      <BitcoinUniverse3D exploreMode={isExploreMode} />
 
       {!btcData ? (
         <LoadingHeartbeat />
       ) : (
         <>
-          {/* 타이틀 */}
-          <h1 className="text-4xl font-bold mt-20 mb-6 z-10">Bitcoin Resonance</h1>
+          {!isExploreMode && (
+            <>
+              <h1 className="text-4xl font-bold mt-16 mb-6 z-10">Bitcoin Resonance</h1>
 
-          {/* 가격, 거래량, 변동률 */}
-          <MarketStats
-            price={btcData.price}
-            volume={btcData.volume}
-            change={btcData.change}
-          />
+              <MarketStats
+                price={btcData.price}
+                volume={btcData.volume}
+                change={btcData.change}
+              />
 
-          {/* 심장 박동 */}
-          <BreathingPanel volume={btcData.volume} />
+              <BreathingPanel volume={btcData.volume} />
 
-          {/* 간단한 데이터 표시 */}
-          <div className="mt-4 text-center text-lg space-y-1 z-10">
-            <p>
-              Price: ${btcData.price.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </p>
-            <p>
-              Volume: ${btcData.volume.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </p>
-            <p className={btcData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
-              Change: {btcData.change.toFixed(2)}%
-            </p>
-          </div>
+              <div className="mt-4 text-center text-lg space-y-1 z-10">
+                <p>
+                  Price: ${btcData.price.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+                <p>
+                  Volume: ${btcData.volume.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+                <p className={btcData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
+                  Change: {btcData.change.toFixed(2)}%
+                </p>
+              </div>
 
-          {/* About Section */}
-          <div className="mt-20">
-            <AboutSection />
-          </div>
+              {/* 🔥 Explore Mode Button */}
+              <button
+                onClick={() => setIsExploreMode(true)}
+                className="mt-10 px-6 py-3 bg-white text-black rounded-full hover:bg-gray-200 transition z-10 shadow"
+              >
+                🚀 Explore the Universe
+              </button>
 
-          {/* Fear and Greed Index + Live Sentiment */}
-          <div className="flex flex-col items-center justify-center space-y-10 mt-20">
-            <FearGreedMeter />
-            <LiveSentimentMeter />
-          </div>
+              <div className="mt-20">
+                <AboutSection />
+              </div>
+
+              <div className="flex flex-col items-center justify-center space-y-10 mt-20">
+                <FearGreedMeter />
+                <LiveSentimentMeter />
+              </div>
+            </>
+          )}
+
+          {/* 🔥 Web Mode 복귀 버튼 (Explore Mode 시에만 보임) */}
+          {isExploreMode && (
+            <button
+              onClick={() => setIsExploreMode(false)}
+              className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
+            >
+              🏠 Return to Web Mode
+            </button>
+          )}
         </>
       )}
     </main>

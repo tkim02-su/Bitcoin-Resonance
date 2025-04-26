@@ -1,17 +1,17 @@
 // app/lib/fetchBitcoin.ts
 
 export async function fetchBitcoinData() {
-  const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true');
-  
+  const res = await fetch('/api/bitcoin'); // ✅ 여기 수정!
+
   if (!res.ok) {
-    throw new Error('Failed to fetch Bitcoin data from CoinGecko');
+    throw new Error('Failed to fetch Bitcoin data from server');
   }
 
   const data = await res.json();
 
   return {
-    price: data.bitcoin.usd,                 // 현재 가격
-    volume: data.bitcoin.usd_24h_vol,         // 24시간 거래량 (USD)
-    change: data.bitcoin.usd_24h_change,      // 24시간 변동률 (%)
+    price: data.price,          // ✅ 서버에서 이미 파싱된 데이터 받음
+    volume: data.volume,
+    change: data.change,
   };
 }
