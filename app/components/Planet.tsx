@@ -2,7 +2,7 @@
 
 import { useLoader, useFrame } from '@react-three/fiber';
 import { TextureLoader } from 'three';
-import { useRef, useMemo } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 
 interface PlanetProps {
@@ -15,13 +15,18 @@ interface PlanetProps {
 export default function Planet({ position, size, planetFolder, onClick }: PlanetProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
-  // ✨ Lazy Load: diffuse만 먼저 불러오기 (가벼운걸로)
-  const [diffuse] = useLoader(TextureLoader, [
+  const [diffuse, normal, roughness] = useLoader(TextureLoader, [
     `/planets/${planetFolder}/diffuse.jpg`,
+    `/planets/${planetFolder}/normal.jpg`,
+    `/planets/${planetFolder}/roughness.jpg`,
   ]);
 
-  // ✨ 매번 random rotation speed
-  const rotationSpeed = useMemo(() => Math.random() * 0.002 + 0.0005, []);
+  // 🎨 랜덤 스타일 요소 추가
+  const rotationSpeed = Math.random() * 0.003 + 0.001; // 0.001 ~ 0.004
+  const randomMetalness = Math.random() * 0.3;         // 0.0 ~ 0.3
+  const randomRoughness = Math.random() * 0.5 + 0.5;    // 0.5 ~ 1.0
+  const randomEmissiveColor = new THREE.Color(`hsl(${Math.random() * 360}, 40%, 25%)`);
+  const randomEmissiveIntensity = Math.random() * 0.6 + 0.2; // 0.2 ~ 0.8
 
   useFrame(() => {
     if (meshRef.current) {
@@ -31,13 +36,15 @@ export default function Planet({ position, size, planetFolder, onClick }: Planet
 
   return (
     <mesh position={position} ref={meshRef} onClick={onClick}>
-      <sphereGeometry args={[size, 48, 48]} /> {/* 💡 64→48로 살짝 가볍게 */}
+      <sphereGeometry args={[size, 64, 64]} />
       <meshStandardMaterial
         map={diffuse}
-        roughness={0.8}                      // ✨ 더 부드럽게
-        metalness={0.1}
-        emissive={new THREE.Color(0x333333)}  // ✨ 살짝 빛나는 톤
-        emissiveIntensity={0.5}
+        normalMap={normal}
+        roughnessMap={roughness}
+        roughness={randomRoughness}
+        metalness={randomMetalness}
+        emissive={randomEmissiveColor}
+        emissiveIntensity={randomEmissiveIntensity}
         toneMapped={false}
       />
     </mesh>
