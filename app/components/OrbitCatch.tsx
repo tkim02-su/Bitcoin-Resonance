@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import * as THREE from 'three';
 
 interface OrbitCatchProps {
   onSuccess: () => void;
