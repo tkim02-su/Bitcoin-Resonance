@@ -12,6 +12,7 @@ export interface Altcoin {
       const data = await res.json();
   
       if (Array.isArray(data)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.slice(0, 200).map((coin: any) => ({
           id: coin.id,
           symbol: coin.symbol,
