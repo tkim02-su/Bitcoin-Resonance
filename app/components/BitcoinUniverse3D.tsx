@@ -8,7 +8,7 @@ import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import PlanetStoryCard from './PlanetStoryCard';
 import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
 import * as THREE from 'three';
-import PlanetsInstanced from './PlanetsInstanced'; 
+import PlanetsInstanced from './PlanetsInstanced';
 import FloatingLabel from './FloatingLabel';
 
 interface BitcoinUniverse3DProps {
@@ -30,7 +30,6 @@ interface PlanetInfo {
   rotationSpeed: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CameraTravelContext = createContext<any>(null);
 function useCameraTravel() {
   return useContext(CameraTravelContext);
@@ -81,6 +80,41 @@ function CameraAnimator({ targetZ }: { targetZ: number }) {
   return null;
 }
 
+function SpaceshipFlyController() {
+  const { camera } = useThree();
+  const keys = useRef<{ [key: string]: boolean }>({});
+  const direction = useRef(new THREE.Vector3());
+  const up = new THREE.Vector3(0, 1, 0);
+  const rollSpeed = 0.005;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = true);
+    const handleKeyUp = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = false);
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  useFrame((_, delta) => {
+    const moveSpeed = 80;
+
+    direction.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
+
+    if (keys.current['w']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -rollSpeed));
+    if (keys.current['s']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rollSpeed));
+    if (keys.current['a']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(up, rollSpeed));
+    if (keys.current['d']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(up, -rollSpeed));
+
+    camera.position.add(direction.current.multiplyScalar(moveSpeed * delta));
+  });
+
+  return null;
+}
+
 function FallbackLoading() {
   return (
     <mesh>
@@ -99,6 +133,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
   const orbitControlsRef = useRef<OrbitControlsImpl>(null);
   const [cameraZ, setCameraZ] = useState(5);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const [isFlyMode, setIsFlyMode] = useState(false);
 
   useEffect(() => {
     if (exploreMode && altcoins.length) {
@@ -117,9 +152,8 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
   }, [exploreMode, altcoins]);
 
   const handlePlanetClick = (index: number) => {
-    if (!altcoins.length || !planets.length) return;
+    if (!altcoins.length || !planets.length || isFlyMode) return;
     const altcoin = altcoins[index % altcoins.length];
-    console.log('Planet clicked!', altcoin);
     setSelectedAltcoin(altcoin);
     setCameraTarget(planets[index].position);
     setIsTraveling(true);
@@ -139,6 +173,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
     setExploreMode(false);
     setSelectedAltcoin(null);
     setCameraTarget(null);
+    setIsFlyMode(false);
     setIsTraveling(false);
     if (orbitControlsRef.current) {
       orbitControlsRef.current.enabled = true;
@@ -161,30 +196,32 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
 
             {exploreMode && (
               <>
-                <DreiOrbitControls
-                  ref={orbitControlsRef}
-                  makeDefault
-                  enableZoom
-                  enableRotate
-                  enablePan={false}
-                  zoomSpeed={0.3}
-                  rotateSpeed={0.3}
-                  minDistance={5}
-                  maxDistance={50}
-                  enableDamping
-                  dampingFactor={0.2}
-                  autoRotate
-                  autoRotateSpeed={0.2}
-                />
+                {!isFlyMode && (
+                  <DreiOrbitControls
+                    ref={orbitControlsRef}
+                    makeDefault={!isFlyMode}
+                    enableZoom
+                    enableRotate
+                    enablePan={false}
+                    zoomSpeed={0.3}
+                    rotateSpeed={0.3}
+                    minDistance={5}
+                    maxDistance={50}
+                    enableDamping
+                    dampingFactor={0.2}
+                    autoRotate
+                    autoRotateSpeed={0.2}
+                  />
+                )}
+                {isFlyMode && <SpaceshipFlyController />}
 
-                {/* ✅ Now using the imported PlanetsInstanced with hover effects */}
                 <PlanetsInstanced planets={planets} onPlanetClick={handlePlanetClick} />
-                {exploreMode && planets.map((planet, i) => (
+                {planets.map((planet, i) => (
                   <FloatingLabel
                     key={`label-${i}`}
                     text={altcoins[i % altcoins.length]?.symbol.toUpperCase() || ''}
                     position={planet.position}
-                    scale={planet.scale} // ✅ pass scale!
+                    scale={planet.scale}
                   />
                 ))}
               </>
@@ -193,6 +230,34 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
             <CameraAnimator targetZ={cameraZ} />
           </Suspense>
         </Canvas>
+
+        {exploreMode && (
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+            {isFlyMode && (
+              <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                <div className="w-32 h-32 border-2 border-white rounded-full opacity-40"></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {exploreMode && (
+          <button
+            onClick={() => setIsFlyMode(prev => !prev)}
+            className={`fixed bottom-20 right-6 px-5 py-2 ${isFlyMode ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-full transition z-20 shadow`}
+          >
+            {isFlyMode ? '🛑 Exit Fly Free Mode' : '🚀 Activate Fly Free Mode'}
+          </button>
+        )}
+
+        {exploreMode && (
+          <button
+            onClick={handleReturnToWebMode}
+            className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
+          >
+            🏠 Return to Web Mode
+          </button>
+        )}
 
         {exploreMode && selectedAltcoin && (
           <PlanetStoryCard
@@ -203,15 +268,6 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
             link={`https://www.coingecko.com/en/coins/${selectedAltcoin.id}`}
             onAbort={handleCloseInfo}
           />
-        )}
-
-        {exploreMode && (
-          <button
-            onClick={handleReturnToWebMode}
-            className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
-          >
-            🏠 Return to Web Mode
-          </button>
         )}
       </div>
     </CameraTravelContext.Provider>
