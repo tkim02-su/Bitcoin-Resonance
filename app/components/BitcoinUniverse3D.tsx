@@ -63,6 +63,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
     }
   }, [exploreMode]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePlanetClick = (altcoin: AltcoinInfo, _position: [number, number, number], _folder: string) => {
     setSelectedAltcoin(altcoin);
   };
