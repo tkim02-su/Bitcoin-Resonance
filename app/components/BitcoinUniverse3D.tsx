@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import EnhancedStars from './EnhancedStars';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
-import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'; // ✅ Needed correctly
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import Planet from './Planet';
 import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
 import PlanetStoryCard from './PlanetStoryCard';
@@ -23,14 +23,9 @@ interface AltcoinInfo {
 export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: BitcoinUniverse3DProps) {
   const [selectedAltcoin, setSelectedAltcoin] = useState<AltcoinInfo | null>(null);
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_selectedPlanetPosition, setSelectedPlanetPosition] = useState<[number, number, number] | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_selectedPlanetFolder, setSelectedPlanetFolder] = useState<string>('');
-  const orbitControlsRef = useRef<OrbitControlsImpl>(null); // ✅ Proper type
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_isReturning, setIsReturning] = useState(false);
+  const orbitControlsRef = useRef<OrbitControlsImpl>(null);
   const [cameraZ, setCameraZ] = useState(5);
+  const [planets, setPlanets] = useState<{ position: [number, number, number]; planetFolder: string }[]>([]);
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -47,6 +42,17 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
       }
     };
     fetchAltcoins();
+
+    // 🚀 Planets 랜덤 배치 준비 (초기에 한 번만)
+    const generated = Array.from({ length: 30 }).map((_, index) => ({
+      position: [
+        (Math.random() - 0.5) * 100,
+        (Math.random() - 0.5) * 100,
+        (Math.random() - 0.5) * 100,
+      ] as [number, number, number],
+      planetFolder: `planet${(index % 32) + 1}`,
+    }));
+    setPlanets(generated);
   }, []);
 
   useEffect(() => {
@@ -54,24 +60,19 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
       setCameraZ(20);
     } else {
       setCameraZ(5);
-      setSelectedAltcoin(null);
+      setSelectedAltcoin(null); // ✅ Web mode 복귀 시 story card 끄기
     }
   }, [exploreMode]);
 
-  const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number], folder: string) => {
+  const handlePlanetClick = (altcoin: AltcoinInfo) => {
     setSelectedAltcoin(altcoin);
-    setSelectedPlanetPosition(position);
-    setSelectedPlanetFolder(folder);
   };
 
   const handleCloseInfo = () => {
     setSelectedAltcoin(null);
-    setSelectedPlanetPosition(null);
-    setSelectedPlanetFolder('');
   };
 
   const handleReturnToWebMode = () => {
-    setIsReturning(true);
     setExploreMode(false);
   };
 
@@ -79,7 +80,9 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
     <div className="absolute inset-0 z-0">
       <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
         <Suspense fallback={null}>
-          <ambientLight intensity={0.3} />
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+          <pointLight position={[0, 5, 5]} intensity={2} distance={100} />
           <pointLight position={[5, 5, 5]} intensity={1} />
           <EnhancedStars exploreMode={exploreMode} />
 
@@ -98,21 +101,15 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
                 dampingFactor={0.1}
                 enableDamping
               />
-              {Array.from({ length: 30 }).map((_, index) => {
+              {planets.map((planet, index) => {
                 const randomAltcoin = altcoins[index % altcoins.length];
-                const randomPosition: [number, number, number] = [
-                  (Math.random() - 0.5) * 100,
-                  (Math.random() - 0.5) * 100,
-                  (Math.random() - 0.5) * 100,
-                ];
-                const planetFolder = `planet${(index % 5) + 1}`;
                 return (
                   <Planet
                     key={index}
-                    position={randomPosition}
+                    position={planet.position}
                     size={Math.random() * 1.5 + 0.5}
-                    planetFolder={planetFolder}
-                    onClick={() => handlePlanetClick(randomAltcoin, randomPosition, planetFolder)}
+                    planetFolder={planet.planetFolder}
+                    onClick={() => handlePlanetClick(randomAltcoin)}
                   />
                 );
               })}
@@ -123,6 +120,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
         </Suspense>
       </Canvas>
 
+      {/* ✅ Explore Mode일 때만 StoryCard 뜨게 */}
       {exploreMode && selectedAltcoin && (
         <PlanetStoryCard
           name={selectedAltcoin.name}
@@ -134,6 +132,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
         />
       )}
 
+      {/* ✅ Return to Web Mode 버튼 */}
       {exploreMode && (
         <button
           onClick={handleReturnToWebMode}

@@ -20,7 +20,7 @@ export default function PlanetStoryCard({ name, description, mission, symbol, li
     setTimeout(() => {
       window.open(link, '_blank');
       setIsLaunching(false);
-      onAbort(); // Launch 끝나고 자동 Abort
+      onAbort(); // 🚀 Launch 완료 후 StoryCard 닫기
     }, 3000);
   };
 
@@ -32,17 +32,17 @@ export default function PlanetStoryCard({ name, description, mission, symbol, li
   return (
     <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-gray-900 to-black p-8 rounded-2xl shadow-2xl border-2 border-gray-700 w-96 max-w-full text-white space-y-6 z-30 overflow-hidden">
       
-      {/* 카드 헤더 */}
+      {/* Header */}
       <h2 className="text-3xl font-bold text-center tracking-wide">🚀 {name}</h2>
       <p className="text-center text-gray-400 text-sm">({symbol.toUpperCase()})</p>
 
-      {/* 설명 */}
+      {/* Content */}
       <div className="mt-4 space-y-3 text-center">
         <p className="text-gray-300 text-sm">{description}</p>
         <p className="text-indigo-400 text-sm font-semibold">Mission: {mission}</p>
       </div>
 
-      {/* 버튼 */}
+      {/* Launch / Abort Buttons */}
       <div className="flex justify-center space-x-6 mt-6">
         <button
           onClick={handleLaunch}
@@ -60,7 +60,7 @@ export default function PlanetStoryCard({ name, description, mission, symbol, li
         </button>
       </div>
 
-      {/* Launching 애니메이션 */}
+      {/* Launching Rocket Animation */}
       <AnimatePresence>
         {isLaunching && (
           <motion.div
@@ -75,7 +75,7 @@ export default function PlanetStoryCard({ name, description, mission, symbol, li
         )}
       </AnimatePresence>
 
-      {/* Launching 로그 출력 */}
+      {/* Launching Logs */}
       {isLaunching && (
         <div className="mt-8 p-4 bg-gray-800 rounded-lg text-xs text-left">
           <p className="text-green-400">[SYSTEM] Launch sequence initiated for <span className="font-bold">{name}</span> ({symbol.toUpperCase()})</p>
