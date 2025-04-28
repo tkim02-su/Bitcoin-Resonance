@@ -27,7 +27,7 @@ function MilkyWayBackground() {
 
   return (
     <mesh scale={[-500, 500, 500]}>
-      <sphereGeometry args={[1, 64, 64]} />
+      <sphereGeometry args={[1, 32, 32]} /> {/* ⭐ Reduced subdivisions */}
       <meshBasicMaterial map={texture} side={THREE.BackSide} />
     </mesh>
   );
@@ -38,6 +38,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
   const [altcoins, setAltcoins] = useState<AltcoinInfo[]>([]);
   const orbitControlsRef = useRef<OrbitControlsImpl>(null);
   const [cameraZ, setCameraZ] = useState(5);
+  const [planetCount, setPlanetCount] = useState(0); // 🌟 New state to control progressive loading
 
   useEffect(() => {
     const fetchAltcoins = async () => {
@@ -57,11 +58,25 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
   useEffect(() => {
     if (exploreMode) {
       setCameraZ(20);
+      setPlanetCount(0); // Reset planet loading
+      progressiveLoadPlanets();
     } else {
       setCameraZ(5);
       setSelectedAltcoin(null);
     }
   }, [exploreMode]);
+
+  // 🌟 Progressive loading logic
+  const progressiveLoadPlanets = () => {
+    let loaded = 0;
+    const interval = setInterval(() => {
+      loaded += 5; // Load 5 planets every tick
+      setPlanetCount(Math.min(loaded, 30));
+      if (loaded >= 30) {
+        clearInterval(interval);
+      }
+    }, 300); // 300ms delay
+  };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePlanetClick = (altcoin: AltcoinInfo, _position: [number, number, number], _folder: string) => {
@@ -105,7 +120,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
                 dampingFactor={0.1}
                 enableDamping
               />
-              {Array.from({ length: 30 }).map((_, index) => {
+              {Array.from({ length: planetCount }).map((_, index) => { // 🔥 Only render up to planetCount
                 const randomAltcoin = altcoins[index % altcoins.length];
                 const randomPosition: [number, number, number] = [
                   (Math.random() - 0.5) * 100,
