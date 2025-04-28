@@ -6,6 +6,7 @@ import MarketStats from './components/MarketStats';
 import dynamic from 'next/dynamic';
 import AboutSection from './components/AboutSection';
 import { fetchBitcoinData } from '../lib/fetchBitcoin';
+import { fetchAltcoins } from '../lib/fetchAltcoins'; // ✅ added
 import FearGreedMeter from './components/FearGreedMeter';
 import LiveSentimentMeter from './components/LiveSentimentMeter';
 import LoadingHeartbeat from './components/LoadingHeartbeat';
@@ -21,6 +22,7 @@ export default function Home() {
     change: number;
   } | null>(null);
 
+  const [altcoins, setAltcoins] = useState<any[]>([]); // ✅ new state
   const [isExploreMode, setIsExploreMode] = useState(false);
   const [introDone, setIntroDone] = useState(false); // ⭐ intro 끝났는지
 
@@ -36,7 +38,17 @@ export default function Home() {
       }
     };
 
+    const loadAltcoins = async () => {
+      try {
+        const data = await fetchAltcoins();
+        if (isMounted) setAltcoins(data);
+      } catch (err) {
+        console.error('Altcoin fetch error:', err);
+      }
+    };
+
     load();
+    loadAltcoins(); // ✅ fetch altcoins earlier too
     const interval = setInterval(load, 15000); // 15초마다 polling
     return () => {
       isMounted = false;
@@ -50,7 +62,7 @@ export default function Home() {
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
-      <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} />
+      <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} initialAltcoins={altcoins} /> {/* ✅ pass altcoins */}
 
       {!btcData ? (
         <LoadingHeartbeat />
