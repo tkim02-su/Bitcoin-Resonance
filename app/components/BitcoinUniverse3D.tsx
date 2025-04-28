@@ -11,7 +11,6 @@ import PlanetStoryCard from './PlanetStoryCard';
 import { TextureLoader } from 'three';
 import * as THREE from 'three';
 
-
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
   setExploreMode: (mode: boolean) => void;
@@ -25,7 +24,7 @@ interface AltcoinInfo {
 
 function MilkyWayBackground() {
   const texture = useLoader(TextureLoader, '/textures/milkyway.jpg');
-  
+
   return (
     <mesh scale={[-500, 500, 500]}>
       <sphereGeometry args={[1, 64, 64]} />
@@ -64,7 +63,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
     }
   }, [exploreMode]);
 
-  const handlePlanetClick = (altcoin: AltcoinInfo, position: [number, number, number], folder: string) => {
+  const handlePlanetClick = (altcoin: AltcoinInfo, _position: [number, number, number], _folder: string) => {
     setSelectedAltcoin(altcoin);
   };
 
@@ -81,7 +80,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode }: Bitco
     <div className="absolute inset-0 z-0">
       <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
         <Suspense fallback={null}>
-          {exploreMode && <MilkyWayBackground />} {/* ✅ 은하수 추가 */}
+          {exploreMode && <MilkyWayBackground />}
 
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
