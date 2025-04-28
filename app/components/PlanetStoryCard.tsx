@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import OrbitCatch from './OrbitCatch'; // ✅ Import OrbitCatch mini-game
 
 interface PlanetStoryCardProps {
   name: string;
@@ -14,6 +15,7 @@ interface PlanetStoryCardProps {
 
 export default function PlanetStoryCard({ name, description, mission, symbol, link, onAbort }: PlanetStoryCardProps) {
   const [isLaunching, setIsLaunching] = useState(false);
+  const [missionCompleted, setMissionCompleted] = useState(false); // ✅ New state for mini-game success
 
   const handleLaunch = () => {
     setIsLaunching(true);
@@ -42,23 +44,32 @@ export default function PlanetStoryCard({ name, description, mission, symbol, li
         <p className="text-indigo-400 text-sm font-semibold">Mission: {mission}</p>
       </div>
 
+      {/* OrbitCatch Game */}
+      {!missionCompleted && (
+        <div className="flex justify-center">
+          <OrbitCatch onSuccess={() => setMissionCompleted(true)} />
+        </div>
+      )}
+
       {/* Launch / Abort Buttons */}
-      <div className="flex justify-center space-x-6 mt-6">
-        <button
-          onClick={handleLaunch}
-          className="px-6 py-2 bg-green-500 hover:bg-green-600 rounded-full text-black font-bold transition shadow-lg"
-          disabled={isLaunching}
-        >
-          {isLaunching ? 'Launching...' : 'Launch'}
-        </button>
-        <button
-          onClick={handleAbort}
-          className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-full text-black font-bold transition shadow-lg"
-          disabled={isLaunching}
-        >
-          Abort
-        </button>
-      </div>
+      {missionCompleted && (
+        <div className="flex justify-center space-x-6 mt-6">
+          <button
+            onClick={handleLaunch}
+            className="px-6 py-2 bg-green-500 hover:bg-green-600 rounded-full text-black font-bold transition shadow-lg"
+            disabled={isLaunching}
+          >
+            {isLaunching ? 'Launching...' : 'Launch'}
+          </button>
+          <button
+            onClick={handleAbort}
+            className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-full text-black font-bold transition shadow-lg"
+            disabled={isLaunching}
+          >
+            Abort
+          </button>
+        </div>
+      )}
 
       {/* Launching Rocket Animation */}
       <AnimatePresence>

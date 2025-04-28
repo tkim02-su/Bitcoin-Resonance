@@ -119,6 +119,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
   const handlePlanetClick = (index: number) => {
     if (!altcoins.length || !planets.length) return;
     const altcoin = altcoins[index % altcoins.length];
+    console.log('Planet clicked!', altcoin);
     setSelectedAltcoin(altcoin);
     setCameraTarget(planets[index].position);
     setIsTraveling(true);
