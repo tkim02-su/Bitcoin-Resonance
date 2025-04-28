@@ -6,7 +6,7 @@ import MarketStats from './components/MarketStats';
 import dynamic from 'next/dynamic';
 import AboutSection from './components/AboutSection';
 import { fetchBitcoinData } from '../lib/fetchBitcoin';
-import { fetchAltcoins } from '../lib/fetchAltcoins'; // ✅ added
+import { fetchAltcoins, Altcoin } from '../lib/fetchAltcoins'; // ✅ import Altcoin type
 import FearGreedMeter from './components/FearGreedMeter';
 import LiveSentimentMeter from './components/LiveSentimentMeter';
 import LoadingHeartbeat from './components/LoadingHeartbeat';
@@ -22,14 +22,14 @@ export default function Home() {
     change: number;
   } | null>(null);
 
-  const [altcoins, setAltcoins] = useState<any[]>([]); // ✅ new state
+  const [altcoins, setAltcoins] = useState<Altcoin[]>([]); // ✅ no any[]
   const [isExploreMode, setIsExploreMode] = useState(false);
-  const [introDone, setIntroDone] = useState(false); // ⭐ intro 끝났는지
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    const load = async () => {
+    const load = async (): Promise<void> => {
       try {
         const data = await fetchBitcoinData();
         if (isMounted) setBtcData(data);
@@ -38,7 +38,7 @@ export default function Home() {
       }
     };
 
-    const loadAltcoins = async () => {
+    const loadAltcoins = async (): Promise<void> => {
       try {
         const data = await fetchAltcoins();
         if (isMounted) setAltcoins(data);
@@ -48,8 +48,8 @@ export default function Home() {
     };
 
     load();
-    loadAltcoins(); // ✅ fetch altcoins earlier too
-    const interval = setInterval(load, 15000); // 15초마다 polling
+    loadAltcoins();
+    const interval = setInterval(load, 15000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -62,7 +62,7 @@ export default function Home() {
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white overflow-x-hidden">
-      <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} initialAltcoins={altcoins} /> {/* ✅ pass altcoins */}
+      <BitcoinUniverse3D exploreMode={isExploreMode} setExploreMode={setIsExploreMode} initialAltcoins={altcoins} />
 
       {!btcData ? (
         <LoadingHeartbeat />
@@ -82,16 +82,10 @@ export default function Home() {
 
               <div className="mt-4 text-center text-lg space-y-1 z-10">
                 <p>
-                  Price: ${btcData.price.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Price: ${btcData.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p>
-                  Volume: ${btcData.volume.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Volume: ${btcData.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className={btcData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
                   Change: {btcData.change.toFixed(2)}%
@@ -115,12 +109,12 @@ export default function Home() {
                 <LiveSentimentMeter />
               </div>
 
-              {/* ✅ Footer: Explore Mode 아닐 때만 표시 */}
+              {/* ✅ Footer only shown in Web Mode */}
               <Footer />
             </>
           )}
 
-          {/* 🔥 Web Mode 복귀 버튼 */}
+          {/* 🔥 Return Button */}
           {isExploreMode && (
             <button
               onClick={() => setIsExploreMode(false)}

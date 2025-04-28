@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface PlanetsInstancedProps {
@@ -16,11 +16,12 @@ interface PlanetsInstancedProps {
 
 export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInstancedProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = new THREE.Object3D();
+  const dummyRef = useRef(new THREE.Object3D()); // ✅ Move dummy into a ref
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!meshRef.current) return;
+    const dummy = dummyRef.current;
 
     planets.forEach((planet, i) => {
       dummy.position.set(...planet.position);
@@ -39,20 +40,20 @@ export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInst
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
+    const dummy = dummyRef.current;
 
     planets.forEach((planet, i) => {
       const rotationY = (planet.rotationSpeed + 0.001) * clock.elapsedTime;
       dummy.position.set(...planet.position);
 
       let finalScale = planet.scale;
-      let baseColor = planet.color.clone();
+      const baseColor = planet.color.clone(); // ✅ const instead of let
 
       if (hoveredIndex === i) {
-        const pulse = Math.sin(clock.elapsedTime * 6) * 0.03 + 1.05; // ✨ smaller subtle pulse
+        const pulse = Math.sin(clock.elapsedTime * 6) * 0.03 + 1.05; // ✨ Subtle hover pulse
         finalScale *= pulse;
 
-        // Instead of pure white, brighten original color
-        baseColor.offsetHSL(0, 0, 0.2); // Lighten color slightly
+        baseColor.offsetHSL(0, 0, 0.2); // ✅ Slight lighten on hover
       }
 
       dummy.scale.setScalar(finalScale);
@@ -68,7 +69,7 @@ export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInst
     }
   });
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => { // ✅ Proper typing
     if (e.instanceId !== undefined) {
       setHoveredIndex(e.instanceId);
     }
@@ -78,7 +79,7 @@ export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInst
     setHoveredIndex(null);
   };
 
-  const handlePointerDown = (e: any) => {
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => { // ✅ Proper typing
     if (e.instanceId !== undefined) {
       onPlanetClick(e.instanceId);
     }
@@ -94,13 +95,13 @@ export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInst
       castShadow
       receiveShadow
     >
-      <sphereGeometry args={[1, 64, 64]} /> {/* ✅ Higher poly sphere for smoothness */}
+      <sphereGeometry args={[1, 64, 64]} /> {/* ✅ Smooth high poly sphere */}
       <meshStandardMaterial
         vertexColors
-        roughness={0.7}        // ✅ Looks dusty / rocky
-        metalness={0.2}        // ✅ Tiny bit metallic for reflections
-        emissive={new THREE.Color(0x111111)}  // ✅ Subtle base glow
-        emissiveIntensity={0.6} // ✅ Lower glow, more natural
+        roughness={0.7}        
+        metalness={0.2}        
+        emissive={new THREE.Color(0x111111)}
+        emissiveIntensity={0.6}
         toneMapped={false}
       />
     </instancedMesh>
