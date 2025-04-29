@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import PlanetsInstanced from './PlanetsInstanced';
 import FloatingLabel from './FloatingLabel';
 import CrashOverlay from './CrashOverlay';
+import FlyBriefingModal from './FlyBriefingModal';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -281,18 +282,10 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
         )}
 
         {exploreMode && showFlyTip && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white z-50">
-            <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center space-y-4">
-              <h2 className="text-2xl font-bold">🛸 Welcome to Fly Free Mode</h2>
-              <p className="text-sm">Avoid crashing into planets or flying out of the galaxy!</p>
-              <button
-                onClick={() => setShowFlyTip(false)}
-                className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full font-bold"
-              >
-                🚀 Begin Mission
-              </button>
-            </div>
-          </div>
+          <FlyBriefingModal
+            onStart={() => setShowFlyTip(false)}
+            onCancel={() => setIsFlyMode(false)}
+          />
         )}
 
         {exploreMode && selectedAltcoin && !crashed && (
