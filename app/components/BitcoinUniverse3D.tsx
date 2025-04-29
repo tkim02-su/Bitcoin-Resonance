@@ -10,6 +10,7 @@ import { altcoinDescriptions } from '../../lib/altcoinDescriptions';
 import * as THREE from 'three';
 import PlanetsInstanced from './PlanetsInstanced';
 import FloatingLabel from './FloatingLabel';
+import CrashOverlay from './CrashOverlay';
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -30,7 +31,6 @@ interface PlanetInfo {
   rotationSpeed: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CameraTravelContext = createContext<any>(null);
 function useCameraTravel() {
   return useContext(CameraTravelContext);
@@ -81,7 +81,7 @@ function CameraAnimator({ targetZ }: { targetZ: number }) {
   return null;
 }
 
-function SpaceshipFlyController() {
+function SpaceshipFlyController({ setCrashed, planets }: { setCrashed: (value: boolean) => void; planets: PlanetInfo[] }) {
   const { camera } = useThree();
   const keys = useRef<{ [key: string]: boolean }>({});
   const direction = useRef(new THREE.Vector3());
@@ -102,7 +102,6 @@ function SpaceshipFlyController() {
 
   useFrame((_, delta) => {
     const moveSpeed = 80;
-
     direction.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
 
     if (keys.current['w']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -rollSpeed));
@@ -111,6 +110,14 @@ function SpaceshipFlyController() {
     if (keys.current['d']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(up, -rollSpeed));
 
     camera.position.add(direction.current.multiplyScalar(moveSpeed * delta));
+
+    if (camera.position.length() > 450) setCrashed(true);
+    for (const planet of planets) {
+      if (new THREE.Vector3(...planet.position).distanceTo(camera.position) < planet.scale + 2) {
+        setCrashed(true);
+        break;
+      }
+    }
   });
 
   return null;
@@ -135,6 +142,8 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
   const [cameraZ, setCameraZ] = useState(5);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const [isFlyMode, setIsFlyMode] = useState(false);
+  const [crashed, setCrashed] = useState(false);
+  const [showFlyTip, setShowFlyTip] = useState(false);
 
   useEffect(() => {
     if (exploreMode && altcoins.length) {
@@ -176,6 +185,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
     setCameraTarget(null);
     setIsFlyMode(false);
     setIsTraveling(false);
+    setCrashed(false);
     if (orbitControlsRef.current) {
       orbitControlsRef.current.enabled = true;
       orbitControlsRef.current.update();
@@ -195,7 +205,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
 
             <EnhancedStars exploreMode={exploreMode} />
 
-            {exploreMode && (
+            {exploreMode && !crashed && (
               <>
                 {!isFlyMode && (
                   <DreiOrbitControls
@@ -214,7 +224,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
                     autoRotateSpeed={0.2}
                   />
                 )}
-                {isFlyMode && <SpaceshipFlyController />}
+                {isFlyMode && <SpaceshipFlyController setCrashed={setCrashed} planets={planets} />}
 
                 <PlanetsInstanced planets={planets} onPlanetClick={handlePlanetClick} />
                 {planets.map((planet, i) => (
@@ -232,35 +242,59 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
           </Suspense>
         </Canvas>
 
-        {exploreMode && (
-          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-            {isFlyMode && (
-              <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                <div className="w-32 h-32 border-2 border-white rounded-full opacity-40"></div>
-              </div>
-            )}
+        {exploreMode && isFlyMode && !crashed && (
+          <>
+            <div className="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-white rounded-full opacity-50 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-center text-white font-mono text-sm opacity-80">
+              🚀 Speed: 80km/s | 🛰️ Altitude: {(cameraRef.current?.position.length() || 0).toFixed(0)}km
+            </div>
+          </>
+        )}
+
+        {exploreMode && crashed && (
+          <CrashOverlay
+            onReturnToWebMode={handleReturnToWebMode}
+            onResumeFlyMode={() => {
+              setCrashed(false);
+              if (cameraRef.current) cameraRef.current.position.set(0, 0, 20);
+            }}
+          />
+        )}
+
+        {exploreMode && !crashed && (
+          <>
+            <button
+              onClick={() => setIsFlyMode(prev => { setShowFlyTip(prev ? false : true); return !prev; })}
+              className={`fixed bottom-20 right-6 px-5 py-2 ${isFlyMode ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-full transition z-20 shadow`}
+            >
+              {isFlyMode ? '🛑 Exit Fly Free Mode' : '🚀 Activate Fly Free Mode'}
+            </button>
+
+            <button
+              onClick={handleReturnToWebMode}
+              className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
+            >
+              🏠 Return to Web Mode
+            </button>
+          </>
+        )}
+
+        {exploreMode && showFlyTip && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white z-50">
+            <div className="bg-gray-900 p-8 rounded-lg shadow-lg text-center space-y-4">
+              <h2 className="text-2xl font-bold">🛸 Welcome to Fly Free Mode</h2>
+              <p className="text-sm">Avoid crashing into planets or flying out of the galaxy!</p>
+              <button
+                onClick={() => setShowFlyTip(false)}
+                className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full font-bold"
+              >
+                🚀 Begin Mission
+              </button>
+            </div>
           </div>
         )}
 
-        {exploreMode && (
-          <button
-            onClick={() => setIsFlyMode(prev => !prev)}
-            className={`fixed bottom-20 right-6 px-5 py-2 ${isFlyMode ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-full transition z-20 shadow`}
-          >
-            {isFlyMode ? '🛑 Exit Fly Free Mode' : '🚀 Activate Fly Free Mode'}
-          </button>
-        )}
-
-        {exploreMode && (
-          <button
-            onClick={handleReturnToWebMode}
-            className="fixed bottom-6 right-6 px-5 py-2 bg-white text-black rounded-full hover:bg-gray-200 transition z-20 shadow"
-          >
-            🏠 Return to Web Mode
-          </button>
-        )}
-
-        {exploreMode && selectedAltcoin && (
+        {exploreMode && selectedAltcoin && !crashed && (
           <PlanetStoryCard
             name={selectedAltcoin.name}
             symbol={selectedAltcoin.symbol}
