@@ -31,6 +31,7 @@ interface PlanetInfo {
   rotationSpeed: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CameraTravelContext = createContext<any>(null);
 function useCameraTravel() {
   return useContext(CameraTravelContext);
