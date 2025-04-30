@@ -103,10 +103,12 @@ export async function fetchTopCryptos(limit = 10) {
 }
 
 // Helper function to throttle API requests (to avoid hitting rate limits)
+// eslint-disable-next-line @typescript-eslint/ban-types
 export function throttledFetch(fetchFn: Function, interval = 60000) {
   let lastFetchTime = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let cachedResult: any = null;
-  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return async function(...args: any[]) {
     const now = Date.now();
     if (now - lastFetchTime > interval || cachedResult === null) {

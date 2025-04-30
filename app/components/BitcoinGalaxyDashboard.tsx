@@ -203,7 +203,7 @@ export default function BitcoinGalaxyDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">Bitcoin Galaxy Observatory</h1>
-          <p className="text-gray-400">Real-time cosmic insights into Bitcoin's universe</p>
+          <p className="text-gray-400">Real-time cosmic insights into the universe</p>
           {usingMockData && (
             <div className="mt-2 bg-yellow-900 text-yellow-300 px-3 py-1 text-sm rounded-md inline-block">
               Using simulated data (API unavailable)
@@ -415,6 +415,7 @@ export default function BitcoinGalaxyDashboard() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#111827', borderColor: '#374151' }}
                       labelStyle={{ color: '#F3F4F6' }}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={(value: number, name: string, props: any) => {
                         const label = props.dataKey === 'value' && props.payload && props.payload.name 
                           ? props.payload.name 

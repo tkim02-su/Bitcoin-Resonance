@@ -26,6 +26,7 @@ const MAX_MISSILES = 20;
 
 // create one shared AudioContext
 const audioCtx = typeof window !== 'undefined'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ? new (window.AudioContext || (window as any).webkitAudioContext)()
   : null;
 
@@ -73,7 +74,7 @@ export default function MissileManager({ missilesRef, planets, onExplode }: Miss
     if (!inst || !missilesRef.current) return;
 
     let visibleCount = 0;
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     missilesRef.current.forEach((m, idx) => {
       if (!m.active) return;
 

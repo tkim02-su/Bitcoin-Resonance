@@ -31,6 +31,7 @@ export default function SpaceshipFlyController({ setCrashed, planets }: Spaceshi
     hasBeenCrashed.current = false;
     
     // Expose the grantInvincibilityFrames method
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).grantSpaceshipInvincibility = grantInvincibilityFrames;
     
     const handleKeyDown = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = true);
@@ -43,6 +44,7 @@ export default function SpaceshipFlyController({ setCrashed, planets }: Spaceshi
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       // Clean up global reference
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).grantSpaceshipInvincibility;
     };
   }, []);

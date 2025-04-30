@@ -169,6 +169,7 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
     
     // Optional: Add explosion sound
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioContextClass) {
         const audioContext = new AudioContextClass();
@@ -278,13 +279,16 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
         slot.active = true;
       
       // Grant temporary invincibility when shooting
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((window as any).grantSpaceshipInvincibility) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).grantSpaceshipInvincibility();
       }
       
       // Add a sound effect for feedback
       try {
         // Use proper type declaration for AudioContext
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
           const audioContext = new AudioContextClass();
