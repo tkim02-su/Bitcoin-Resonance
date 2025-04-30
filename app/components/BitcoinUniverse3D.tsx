@@ -12,6 +12,43 @@ import PlanetsInstanced from './PlanetsInstanced';
 import FloatingLabel from './FloatingLabel';
 import CrashOverlay from './CrashOverlay';
 import FlyBriefingModal from './FlyBriefingModal';
+import MissileManager from './MissileManager';
+import SpaceshipFlyController from './SpaceshipFlyController';
+
+// Define a safe zone function for planet generation
+const createPlanetsWithSafeZone = (altcoins: AltcoinInfo[]) => {
+  // Define a safe zone radius around the origin (where the spaceship spawns)
+  const safeZoneRadius = 30;
+  
+  return altcoins.map(() => {
+    // Generate a random position that's outside the safe zone
+    let position: [number, number, number];
+    let distance = 0;
+    
+    // Keep generating positions until we find one outside the safe zone
+    do {
+      position = [
+        (Math.random() - 0.5) * 150, 
+        (Math.random() - 0.5) * 150, 
+        (Math.random() - 0.5) * 150
+      ] as [number, number, number];
+      
+      // Calculate distance from origin
+      distance = Math.sqrt(
+        position[0] * position[0] + 
+        position[1] * position[1] + 
+        position[2] * position[2]
+      );
+    } while (distance < safeZoneRadius);
+    
+    return {
+      position,
+      scale: Math.random() * 3 + 3,
+      color: new THREE.Color(`hsl(${Math.random() * 360}, 60%, 60%)`),
+      rotationSpeed: Math.random() * 0.002 + 0.001,
+    };
+  });
+};
 
 interface BitcoinUniverse3DProps {
   exploreMode: boolean;
@@ -83,48 +120,6 @@ function CameraAnimator({ targetZ }: { targetZ: number }) {
   return null;
 }
 
-function SpaceshipFlyController({ setCrashed, planets }: { setCrashed: (value: boolean) => void; planets: PlanetInfo[] }) {
-  const { camera } = useThree();
-  const keys = useRef<{ [key: string]: boolean }>({});
-  const direction = useRef(new THREE.Vector3());
-  const up = new THREE.Vector3(0, 1, 0);
-  const rollSpeed = 0.005;
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = true);
-    const handleKeyUp = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = false);
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  useFrame((_, delta) => {
-    const moveSpeed = 80;
-    direction.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
-
-    if (keys.current['w']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -rollSpeed));
-    if (keys.current['s']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rollSpeed));
-    if (keys.current['a']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(up, rollSpeed));
-    if (keys.current['d']) camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(up, -rollSpeed));
-
-    camera.position.add(direction.current.multiplyScalar(moveSpeed * delta));
-
-    if (camera.position.length() > 450) setCrashed(true);
-    for (const planet of planets) {
-      if (new THREE.Vector3(...planet.position).distanceTo(camera.position) < planet.scale + 2) {
-        setCrashed(true);
-        break;
-      }
-    }
-  });
-
-  return null;
-}
-
 function FallbackLoading() {
   return (
     <mesh>
@@ -147,14 +142,60 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
   const [crashed, setCrashed] = useState(false);
   const [showFlyTip, setShowFlyTip] = useState(false);
 
+  // Track destroyed planets
+  const [destroyedPlanets, setDestroyedPlanets] = useState<Set<number>>(new Set());
+
+  // Updated missile ref with proper typings
+  interface MissileType {
+    position: THREE.Vector3;
+    direction: THREE.Vector3;
+    startTime: number;
+    active: boolean;
+  }
+
+  const missilesRef = useRef<MissileType[]>([]);
+  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
+
+  // Add this function to handle planet explosions
+  const handlePlanetExploded = (planetIndex: number) => {
+    console.log(`💥 Planet ${planetIndex} got hit!`);
+    
+    // Add planet to destroyed list
+    setDestroyedPlanets((prevPlanets: Set<number>) => {
+      const newSet = new Set(prevPlanets);
+      newSet.add(planetIndex);
+      return newSet;
+    });
+    
+    // Optional: Add explosion sound
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const audioContext = new AudioContextClass();
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.5);
+        
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.5);
+      }
+    } catch (error) {
+      console.error("Explosion sound failed:", error);
+    }
+  };
+
   useEffect(() => {
     if (exploreMode && altcoins.length) {
-      const newPlanets = altcoins.map(() => ({
-        position: [(Math.random() - 0.5) * 150, (Math.random() - 0.5) * 150, (Math.random() - 0.5) * 150] as [number, number, number],
-        scale: Math.random() * 3 + 3,
-        color: new THREE.Color(`hsl(${Math.random() * 360}, 60%, 60%)`),
-        rotationSpeed: Math.random() * 0.002 + 0.001,
-      }));
+      // Use the safe zone function for planet generation
+      const newPlanets = createPlanetsWithSafeZone(altcoins);
       setPlanets(newPlanets);
       setCameraZ(20);
     } else {
@@ -162,6 +203,18 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
       setCameraZ(5);
     }
   }, [exploreMode, altcoins]);
+
+  useEffect(() => {
+    // Initialize missiles array if empty
+    if (!missilesRef.current || missilesRef.current.length === 0) {
+      missilesRef.current = Array(20).fill(null).map(() => ({
+        position: new THREE.Vector3(),
+        direction: new THREE.Vector3(),
+        startTime: 0,
+        active: false,
+      }));
+    }
+  }, []);
 
   const handlePlanetClick = (index: number) => {
     if (!altcoins.length || !planets.length || isFlyMode) return;
@@ -188,19 +241,85 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
     setIsFlyMode(false);
     setIsTraveling(false);
     setCrashed(false);
+    setDestroyedPlanets(new Set());
+    
+    if (missilesRef.current) {
+      missilesRef.current.forEach(missile => {
+        missile.active = false;
+      });
+    }
+
     if (orbitControlsRef.current) {
       orbitControlsRef.current.enabled = true;
       orbitControlsRef.current.update();
     }
   };
 
+  const resetCameraToStart = () => {
+    if (cameraRef.current) {
+      cameraRef.current.position.set(0, 0, 20);
+      cameraRef.current.lookAt(new THREE.Vector3(0,0,0));
+    }
+  };
+
+  const handleShoot = () => {
+    if (!(cameraRef.current && isFlyMode && !crashed)) return;
+      const position = cameraRef.current.position.clone();
+      const direction = new THREE.Vector3(0, 0, -1)
+        .applyQuaternion(cameraRef.current.quaternion)
+        .normalize();
+
+      // Find a free missile in the pool:
+      const slot = missilesRef.current!.find(m => !m.active);
+      if (slot) {
+        slot.position.copy(position);
+        slot.direction.copy(direction);
+        slot.startTime = clockRef.current!.getElapsedTime();
+        slot.active = true;
+      
+      // Grant temporary invincibility when shooting
+      if ((window as any).grantSpaceshipInvincibility) {
+        (window as any).grantSpaceshipInvincibility();
+      }
+      
+      // Add a sound effect for feedback
+      try {
+        // Use proper type declaration for AudioContext
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioContext = new AudioContextClass();
+          const oscillator = audioContext.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+          oscillator.connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.1);
+        }
+      } catch (error) {
+        console.error("Audio not supported:", error);
+      }
+    }
+  };
+
+  const handleMouseClick = () => {
+    if (isFlyMode && !crashed) {
+      handleShoot();
+    }
+  };
+
   return (
     <CameraTravelContext.Provider value={{ cameraTarget, setCameraTarget, isTraveling, setIsTraveling, orbitControlsRef }}>
       <div className="absolute inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 5], fov: 75 }} onCreated={({ camera }) => { cameraRef.current = camera as THREE.PerspectiveCamera; }}>
+        <Canvas
+          camera={{ position: [0, 0, 5], fov: 75 }}
+          onPointerDown={handleMouseClick}
+          onCreated={({ camera, clock }) => {
+            cameraRef.current = camera as THREE.PerspectiveCamera;
+            clockRef.current = clock;
+          }}
+        >
           <Suspense fallback={<FallbackLoading />}>
             {exploreMode && <MilkyWayBackground />}
-
             <ambientLight intensity={0.8} />
             <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
             <pointLight position={[0, 5, 5]} intensity={2} distance={100} />
@@ -226,9 +345,27 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
                     autoRotateSpeed={0.2}
                   />
                 )}
-                {isFlyMode && <SpaceshipFlyController setCrashed={setCrashed} planets={planets} />}
-
-                <PlanetsInstanced planets={planets} onPlanetClick={handlePlanetClick} />
+                {isFlyMode && 
+                  <SpaceshipFlyController 
+                    setCrashed={setCrashed} 
+                    planets={planets.filter((_, index) => !destroyedPlanets.has(index))}
+                  />
+                }
+                
+                {/* Missile Manager Component */}
+                {isFlyMode && (
+                  <MissileManager
+                    missilesRef={missilesRef}
+                    planets={planets.filter((_, index) => !destroyedPlanets.has(index))}
+                    onExplode={handlePlanetExploded}
+                  />
+                )}
+                
+                <PlanetsInstanced 
+                  planets={planets} 
+                  onPlanetClick={handlePlanetClick}
+                  destroyedPlanets={destroyedPlanets} 
+                />
                 {planets.map((planet, i) => (
                   <FloatingLabel
                     key={`label-${i}`}
@@ -246,9 +383,31 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
 
         {exploreMode && isFlyMode && !crashed && (
           <>
-            <div className="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-white rounded-full opacity-50 transform -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-center text-white font-mono text-sm opacity-80">
-              🚀 Speed: 80km/s | 🛰️ Altitude: {(cameraRef.current?.position.length() || 0).toFixed(0)}km
+            {/* Crosshair */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <svg width="64" height="64" viewBox="0 0 64 64" className="opacity-60">
+                <circle cx="32" cy="32" r="30" stroke="#ff3333" strokeWidth="1" fill="none" />
+                <circle cx="32" cy="32" r="2" fill="#ff3333" />
+                <line x1="32" y1="10" x2="32" y2="20" stroke="#ff3333" strokeWidth="1" />
+                <line x1="32" y1="44" x2="32" y2="54" stroke="#ff3333" strokeWidth="1" />
+                <line x1="10" y1="32" x2="20" y2="32" stroke="#ff3333" strokeWidth="1" />
+                <line x1="44" y1="32" x2="54" y2="32" stroke="#ff3333" strokeWidth="1" />
+              </svg>
+            </div>
+            
+            {/* HUD Panel */}
+            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-40 rounded-lg p-3 text-white font-mono text-sm border border-white border-opacity-20">
+              <div className="flex items-center space-x-4">
+                <div>🚀 <span className="text-green-400">Speed:</span> 80km/s</div>
+                <div>🛰️ <span className="text-blue-400">Altitude:</span> {(cameraRef.current?.position.length() || 0).toFixed(0)}km</div>
+                <div>🔫 <span className="text-yellow-400">Missiles:</span> {missilesRef.current?.length || 0}/10</div>
+                <div>💥 <span className="text-red-400">Destroyed:</span> {destroyedPlanets.size}/{planets.length}</div>
+              </div>
+            </div>
+            
+            {/* Missile Instruction */}
+            <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-red-500 bg-opacity-70 px-4 py-2 rounded-full text-white font-mono text-sm animate-pulse">
+              🎯 Click to fire missiles
             </div>
           </>
         )}
@@ -283,7 +442,11 @@ export default function BitcoinUniverse3D({ exploreMode, setExploreMode, initial
 
         {exploreMode && showFlyTip && (
           <FlyBriefingModal
-            onStart={() => setShowFlyTip(false)}
+            onStart={() => {
+              resetCameraToStart();      // ✨ Reset position before flight
+              setShowFlyTip(false);      // ✨ Hide modal
+              setDestroyedPlanets(new Set()); // Reset destroyed planets
+            }}
             onCancel={() => setIsFlyMode(false)}
           />
         )}

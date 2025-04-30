@@ -1,86 +1,104 @@
-'use client';
-
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
-interface PlanetsInstancedProps {
-  planets: {
-    position: [number, number, number];
-    scale: number;
-    color: THREE.Color;
-    rotationSpeed: number;
-  }[];
-  onPlanetClick: (index: number) => void;
+interface PlanetInfo {
+  position: [number, number, number];
+  scale: number;
+  color: THREE.Color;
+  rotationSpeed: number;
 }
 
-export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInstancedProps) {
+interface PlanetsInstancedProps {
+  planets: PlanetInfo[];
+  onPlanetClick: (index: number) => void;
+  destroyedPlanets?: Set<number>;
+}
+
+// Module-level geometry & material: created once
+const SPHERE_GEOMETRY = new THREE.SphereGeometry(1, 16, 16);
+const PLANET_MATERIAL = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  roughness: 0.7,
+  metalness: 0.2,
+  emissive: new THREE.Color(0x111111),
+  emissiveIntensity: 0.6,
+  toneMapped: false,
+});
+
+export default function PlanetsInstanced({
+  planets,
+  onPlanetClick,
+  destroyedPlanets = new Set(),
+}: PlanetsInstancedProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummyRef = useRef(new THREE.Object3D()); // ✅ Move dummy into a ref
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const dummy = useRef(new THREE.Object3D());
+  const colorAttr = useRef<THREE.Color>(new THREE.Color());
 
-  useEffect(() => {
-    if (!meshRef.current) return;
-    const dummy = dummyRef.current;
-
-    planets.forEach((planet, i) => {
-      dummy.position.set(...planet.position);
-      dummy.scale.setScalar(planet.scale);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      meshRef.current!.setMatrixAt(i, dummy.matrix);
-      meshRef.current!.setColorAt(i, planet.color);
-    });
-
-    meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
+  // Ensure GPU knows we'll dynamically update instance matrices
+  useMemo(() => {
+    if (meshRef.current) {
+      meshRef.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      if (meshRef.current.instanceColor)
+        meshRef.current.instanceColor.setUsage(THREE.DynamicDrawUsage);
     }
-  }, [planets]);
+  }, []);
 
   useFrame(({ clock }) => {
-    if (!meshRef.current) return;
-    const dummy = dummyRef.current;
+    const mesh = meshRef.current;
+    if (!mesh) return;
 
-    planets.forEach((planet, i) => {
-      const rotationY = (planet.rotationSpeed + 0.001) * clock.elapsedTime;
-      dummy.position.set(...planet.position);
+    const time = clock.getElapsedTime();
+    let idx = 0;
 
-      let finalScale = planet.scale;
-      const baseColor = planet.color.clone(); // ✅ const instead of let
+    for (let i = 0; i < planets.length; i++) {
+      const planet = planets[i];
 
-      if (hoveredIndex === i) {
-        const pulse = Math.sin(clock.elapsedTime * 6) * 0.03 + 1.05; // ✨ Subtle hover pulse
-        finalScale *= pulse;
+      dummy.current.position.set(...planet.position);
 
-        baseColor.offsetHSL(0, 0, 0.2); // ✅ Slight lighten on hover
+      if (destroyedPlanets.has(i)) {
+        // Hide destroyed planets by scaling to zero
+        dummy.current.scale.setScalar(0);
+      } else {
+        // rotate and scale
+        const rotationY = (planet.rotationSpeed + 0.001) * time;
+        dummy.current.rotation.set(0, rotationY, 0);
+        dummy.current.scale.setScalar(planet.scale);
       }
 
-      dummy.scale.setScalar(finalScale);
-      dummy.rotation.set(0, rotationY, 0);
-      dummy.updateMatrix();
-      meshRef.current!.setMatrixAt(i, dummy.matrix);
-      meshRef.current!.setColorAt(i, baseColor);
-    });
+      dummy.current.updateMatrix();
+      mesh.setMatrixAt(idx, dummy.current.matrix);
 
-    meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
+      // set color only on non-destroyed
+      if (mesh.instanceColor) {
+        if (destroyedPlanets.has(i)) {
+          // nearly transparent gray
+          colorAttr.current.setRGB(0.1, 0.1, 0.1);
+        } else {
+          // use original color
+          colorAttr.current.copy(planet.color);
+        }
+        mesh.setColorAt(idx, colorAttr.current);
+      }
+
+      idx++;
     }
+
+    mesh.count = idx; // draw only active slots
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
-  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => { // ✅ Proper typing
-    if (e.instanceId !== undefined) {
-      setHoveredIndex(e.instanceId);
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    if (e.instanceId !== undefined && !destroyedPlanets.has(e.instanceId)) {
+      document.body.style.cursor = 'pointer';
     }
   };
-
   const handlePointerOut = () => {
-    setHoveredIndex(null);
+    document.body.style.cursor = 'auto';
   };
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => { // ✅ Proper typing
-    if (e.instanceId !== undefined) {
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    if (e.instanceId !== undefined && !destroyedPlanets.has(e.instanceId)) {
       onPlanetClick(e.instanceId);
     }
   };
@@ -88,22 +106,12 @@ export default function PlanetsInstanced({ planets, onPlanetClick }: PlanetsInst
   return (
     <instancedMesh
       ref={meshRef}
-      args={[undefined, undefined, planets.length]}
-      onPointerDown={handlePointerDown}
+      args={[SPHERE_GEOMETRY, PLANET_MATERIAL, planets.length]}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
+      onPointerDown={handlePointerDown}
       castShadow
       receiveShadow
-    >
-      <sphereGeometry args={[1, 64, 64]} /> {/* ✅ Smooth high poly sphere */}
-      <meshStandardMaterial
-        vertexColors
-        roughness={0.7}        
-        metalness={0.2}        
-        emissive={new THREE.Color(0x111111)}
-        emissiveIntensity={0.6}
-        toneMapped={false}
-      />
-    </instancedMesh>
+    />
   );
 }
